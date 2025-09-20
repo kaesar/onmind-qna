@@ -155,6 +155,18 @@ class QuizEngine {
         }
         
         const question = this.selectedQuestions[questionIndex];
+        
+        // Handle multiple selection answers (e.g., "AB", "ACD")
+        if (userAnswer.length > 1) {
+            const userAnswerArray = userAnswer.split('').sort();
+            const correctAnswerArray = question.correctAnswers.sort();
+            
+            // Check if arrays are equal
+            return userAnswerArray.length === correctAnswerArray.length &&
+                   userAnswerArray.every((answer, index) => answer === correctAnswerArray[index]);
+        }
+        
+        // Handle single selection
         return question.correctAnswers.includes(userAnswer);
     }
 
@@ -192,13 +204,27 @@ class QuizEngine {
             const userAnswer = this.userAnswers[i];
             const isCorrect = userAnswer ? this.isAnswerCorrect(i, userAnswer) : false;
             
+            // Handle multiple selection answer text
+            let userAnswerText = 'Sin respuesta';
+            if (userAnswer) {
+                if (userAnswer.length > 1) {
+                    // Multiple selection - combine all selected option texts
+                    userAnswerText = userAnswer.split('').map(letter => 
+                        `${letter}. ${question.options[letter]}`
+                    ).join(', ');
+                } else {
+                    // Single selection
+                    userAnswerText = `${userAnswer}. ${question.options[userAnswer]}`;
+                }
+            }
+            
             details.push({
                 questionNumber: i + 1,
                 question: question,
                 userAnswer: userAnswer,
                 correctAnswers: question.correctAnswers,
                 isCorrect: isCorrect,
-                userAnswerText: userAnswer ? question.options[userAnswer] : 'Sin respuesta',
+                userAnswerText: userAnswerText,
                 correctAnswerTexts: question.correctAnswers.map(ans => question.options[ans])
             });
         }
@@ -379,8 +405,9 @@ class QuizEngine {
             throw new Error(`Respuesta muy larga: ${answer.length} caracteres (máximo ${this.validationRules.maxAnswerLength})`);
         }
         
-        if (!/^[A-Z]$/.test(answer)) {
-            throw new Error(`Formato de respuesta inválido: "${answer}". Se esperaba una letra mayúscula (A, B, C, D, etc.)`);
+        // Allow single letter (A, B, C) or multiple letters (AB, ACD) for multiple selection
+        if (!/^[A-Z]+$/.test(answer)) {
+            throw new Error(`Formato de respuesta inválido: "${answer}". Se esperaba una o más letras mayúsculas (A, B, AB, ACD, etc.)`);
         }
     }
 
@@ -393,9 +420,20 @@ class QuizEngine {
             throw new Error('Opciones de pregunta no disponibles');
         }
         
-        if (!question.options[answer]) {
-            const availableOptions = Object.keys(question.options).join(', ');
-            throw new Error(`Respuesta "${answer}" no es válida para esta pregunta. Opciones disponibles: ${availableOptions}`);
+        // For multiple selection, validate each letter individually
+        if (answer.length > 1) {
+            for (const letter of answer) {
+                if (!question.options[letter]) {
+                    const availableOptions = Object.keys(question.options).join(', ');
+                    throw new Error(`Respuesta "${letter}" no es válida para esta pregunta. Opciones disponibles: ${availableOptions}`);
+                }
+            }
+        } else {
+            // Single selection validation
+            if (!question.options[answer]) {
+                const availableOptions = Object.keys(question.options).join(', ');
+                throw new Error(`Respuesta "${answer}" no es válida para esta pregunta. Opciones disponibles: ${availableOptions}`);
+            }
         }
     }
 

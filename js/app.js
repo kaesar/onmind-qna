@@ -100,7 +100,14 @@ class QuizApp {
             this.currentFilePath = targetFilePath;
             
             // Parse questions using MarkdownParser
+            console.log('Contenido del archivo cargado:', markdownContent.length, 'caracteres');
+            
             this.questions = this.markdownParser.parseQuestions(markdownContent);
+            
+            console.log('Preguntas parseadas:', this.questions.length);
+            if (this.questions.length > 0) {
+                console.log('Primera pregunta:', this.questions[0]);
+            }
             
             if (this.questions.length === 0) {
                 throw new Error('No se encontraron preguntas válidas en el archivo después del parsing');
@@ -110,10 +117,14 @@ class QuizApp {
             const parsingStats = this.markdownParser.getParsingStats();
             const fileStats = this.fileHandler.getLoadingStats();
             
+            console.log('Estadísticas de parsing:', parsingStats);
+            console.log('Estadísticas de archivo:', fileStats);
+            
             // Create success message with details
             let successMessage = 'Archivo cargado correctamente';
-            if (parsingStats.skippedQuestions > 0) {
+            if (parsingStats && parsingStats.skippedQuestions > 0) {
                 successMessage += ` (${parsingStats.skippedQuestions} preguntas omitidas por errores de formato)`;
+                console.warn('Preguntas omitidas:', parsingStats.skippedQuestions, 'razones:', parsingStats.errors || 'No disponible');
             }
             
             // Update UI with success status

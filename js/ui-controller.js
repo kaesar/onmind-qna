@@ -37,6 +37,8 @@ class UIController {
         // State
         this.currentScreen = 'config';
         this.selectedAnswer = null;
+        this.selectedAnswers = [];
+        this.isMultipleSelection = false;
         this.totalQuestionsAvailable = 0;
         this.saveConfigTimeout = null;
         this.configStatusTimeout = null;
@@ -280,7 +282,7 @@ class UIController {
         
         setTimeout(() => {
             // Update options with staggered animation
-            this.displayOptions(question.options);
+            this.displayOptions(question.options, question.correctAnswers);
         }, 300);
         
         // Update progress bar with smooth animation
@@ -297,6 +299,7 @@ class UIController {
         
         // Clear previous selection
         this.selectedAnswer = null;
+        this.selectedAnswers = [];
         
         // Clear animation classes after they complete
         setTimeout(() => {
@@ -314,14 +317,17 @@ class UIController {
         });
     }
 
-    displayOptions(options) {
+    displayOptions(options, correctAnswers = []) {
         if (!this.optionsContainer || !options) return;
+        
+        // Determine if this is a multiple selection question
+        this.isMultipleSelection = correctAnswers.length > 1;
         
         // Clear previous selections
         const optionButtons = this.optionsContainer.querySelectorAll('.option');
         optionButtons.forEach(btn => btn.classList.remove('selected'));
         
-        // Update option texts
+        // Update option texts and selection mode
         Object.entries(options).forEach(([letter, text]) => {
             const optionButton = this.optionsContainer.querySelector(`[data-option="${letter}"]`);
             if (optionButton) {
@@ -330,6 +336,13 @@ class UIController {
                     textSpan.textContent = text;
                 }
                 optionButton.style.display = 'block';
+                
+                // Add visual indicator for multiple selection
+                if (this.isMultipleSelection) {
+                    optionButton.classList.add('multiple-selection');
+                } else {
+                    optionButton.classList.remove('multiple-selection');
+                }
             }
         });
         
@@ -710,36 +723,46 @@ class UIController {
     }
 
     onOptionSelected(optionElement) {
-        // Remove previous selection with animation
-        const allOptions = this.optionsContainer.querySelectorAll('.option');
-        allOptions.forEach(opt => {
-            if (opt.classList.contains('selected')) {
-                opt.classList.remove('selected');
-                // Add a subtle deselection animation
-                opt.style.transform = 'translateX(0)';
-            }
-        });
+        const option = optionElement.dataset.option;
         
-        // Add selection to clicked option with enhanced feedback
-        optionElement.classList.add('selected');
+        if (this.isMultipleSelection) {
+            // Multiple selection mode - toggle selection
+            if (optionElement.classList.contains('selected')) {
+                optionElement.classList.remove('selected');
+                this.selectedAnswers = this.selectedAnswers.filter(ans => ans !== option);
+            } else {
+                optionElement.classList.add('selected');
+                this.selectedAnswers.push(option);
+            }
+            
+            // Update selectedAnswer for compatibility (join multiple answers)
+            this.selectedAnswer = this.selectedAnswers.sort().join('');
+        } else {
+            // Single selection mode - clear others and select this one
+            const allOptions = this.optionsContainer.querySelectorAll('.option');
+            allOptions.forEach(opt => opt.classList.remove('selected'));
+            
+            optionElement.classList.add('selected');
+            this.selectedAnswer = option;
+            this.selectedAnswers = [option];
+        }
         
         // Add haptic feedback for mobile devices
         if ('vibrate' in navigator) {
             navigator.vibrate(50);
         }
         
-        // Store selected answer
-        this.selectedAnswer = optionElement.dataset.option;
-        
-        // Enable next button with animation
+        // Enable next button if at least one option is selected
         if (this.nextQuestionBtn) {
-            this.nextQuestionBtn.disabled = false;
-            this.nextQuestionBtn.classList.add('bounce-in');
+            const hasSelection = this.selectedAnswers.length > 0;
+            this.nextQuestionBtn.disabled = !hasSelection;
             
-            // Remove animation class after animation completes
-            setTimeout(() => {
-                this.nextQuestionBtn.classList.remove('bounce-in');
-            }, 600);
+            if (hasSelection) {
+                this.nextQuestionBtn.classList.add('bounce-in');
+                setTimeout(() => {
+                    this.nextQuestionBtn.classList.remove('bounce-in');
+                }, 600);
+            }
         }
         
         // Add visual feedback to show selection was registered
