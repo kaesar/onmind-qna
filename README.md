@@ -1,185 +1,187 @@
-# Questions aNd Answers (QNA)
+# Questions aNd Answers (OnMind-QNA)
 
-Aplicación web de quiz interactivo que utiliza archivos Markdown como base de datos de contenido.
+Interactive and simple quiz web application that uses Markdown files as content database.
 
-## Descripción
+## Description
 
-Esta aplicación permite crear quizzes interactivos a partir del archivo `Quiz.md`, extrayendo preguntas y respuestas automáticamente y presentando un quiz aleatorio al usuario.
+This application allows creating interactive quizzes from the `Quiz.md` file, automatically extracting questions and answers and presenting a random quiz to the user.
 
-## Características
+## Features
 
-- Interfaz web responsiva
-- Extracción automática de preguntas desde Markdown
-- Selección aleatoria de preguntas
-- Número configurable de preguntas (10 por defecto)
-- Puntuación y resultados detallados
-- Soporte para respuestas múltiples
+- Responsive web interface
+- Automatic question extraction from Markdown
+- Random question selection
+- Configurable number of questions (10 by default)
+- Detailed scoring and results
+- Multiple answer support
 
-## Estructura del Proyecto
+## Project Structure
 
 ```
 quiz-markdown/
-├── index.html              # Página principal
+├── index.html              # Main page
 ├── css/
-│   └── styles.css          # Estilos de la aplicación
+│   └── styles.css          # Application styles
 ├── js/
-│   ├── app.js              # Punto de entrada principal
-│   ├── markdown-parser.js  # Parser de Markdown
-│   ├── quiz-engine.js      # Motor del quiz
-│   ├── ui-controller.js    # Controlador de UI
-│   └── file-handler.js     # Manejador de archivos
-├── Quiz.md                 # Archivo de datos
-└── README.md               # Este archivo
+│   ├── app.js              # Main entry point
+│   ├── markdown-parser.js  # Markdown parser
+│   ├── quiz-engine.js      # Quiz engine
+│   ├── ui-controller.js    # UI controller
+│   └── file-handler.js     # File handler
+├── Quiz.md                 # Data file
+└── README.md               # This file
 ```
 
-## Cómo Iniciar el Servicio
+## How to Start the Service for OnMind-QNA
 
-Para evitar problemas de **CORS** al cargar archivos evita abrir directamente el archivo `index.html`, es recomendable usar un servidor web local. He aquí unas alternativas para exponer la página web como un servicio local...
+To avoid **CORS** issues when loading files, avoid opening the `index.html` file directly. It's recommended to use a local web server. Here are some alternatives to expose the web page as a local service...
 
-### Python (si tienes Python instalado)
+### Python (if you have Python installed)
 
-Es usual que en equipos con **macOS** cuentes con **Python** instalado (incluso algunos **Linux**).
+It's common for **macOS** systems to have **Python** installed (and some **Linux** distributions too).
 
 ```bash
 python3 -m http.server 8000
 ```
 
-> Para versión de **Python 2.7** usa: `python -m SimpleHTTPServer 8000`
+> For **Python 2.7** version use: `python -m SimpleHTTPServer 8000`
 
-### Bun (si No tienes Python instalado)
+### Bun (if you don't have Python installed)
 
-Una buena alternativa consiste en instalar **Bun** (desde la línea de comandos o terminal) y luego un modulo que hace las veces de servidor web (basado en entorno **Javascript**).
+A good alternative is to install **Bun** (from command line or terminal) and then a module that acts as a web server (based on **Javascript** environment).
 
 ```bash
-# Instalar Bun
+# Install Bun
 curl -fsSL https://bun.com/install | bash  # for macOS, Linux, and WSL
 powershell -c "irm bun.sh/install.ps1|iex" # for Windows
 
-# Instalar servidor global
+# Install global server
 bun install -g http-server
 
-# Ejecutar servidor
+# Run server
 bunx http-server -p 8000
 ```
 
-### PHP (si tienes PHP instalado):
+### PHP (if you have PHP installed):
 
 ```bash
 php -S localhost:8000
 ```
 
-Luego abre un navegador y usa la dirección: `http://localhost:8000`
+### Open OnMind-QNA web application
 
-## Uso de la Aplicación
+Just open a browser and use the address: `http://localhost:8000`
 
-1. **Configurar**: Selecciona el número de preguntas deseado (1-50)
-2. **Iniciar**: Haz clic en "Iniciar Quiz"
-3. **Responder**: Selecciona una opción para cada pregunta
-4. **Navegar**: Usa "Siguiente Pregunta" para avanzar
-5. **Resultados**: Revisa tu puntuación y respuestas detalladas
-6. **Repetir**: Inicia un nuevo quiz con preguntas diferentes
+## Application Usage
 
-## Testing y Desarrollo
+1. **Configure**: Select the desired number of questions (1-50)
+2. **Start**: Click "Start Quiz"
+3. **Answer**: Select an option for each question
+4. **Navigate**: Use "Next Question" to advance
+5. **Results**: Review your score and detailed answers
+6. **Repeat**: Start a new quiz with different questions
 
-### Ejecutar Pruebas
+## Testing and Development
 
-El proyecto incluye herramientas completas de testing:
+### Running Tests
 
-#### Suite de Pruebas Principal
+The project includes complete testing tools:
+
+#### Main Test Suite
 ```bash
-# Abrir el runner de pruebas
+# Open test runner
 open test-runner.html
-# o navegar a http://localhost:8000/test-runner.html
+# or navigate to http://localhost:8000/test-runner.html
 ```
 
-#### Pruebas de Integración
+#### Integration Tests
 ```bash
-# Abrir pruebas de integración completas
+# Open complete integration tests
 open integration-test.html
-# o navegar a http://localhost:8000/integration-test.html
+# or navigate to http://localhost:8000/integration-test.html
 ```
 
-### Herramientas de Desarrollo
+### Development Tools
 
-- **Performance Monitor**: Monitoreo en tiempo real de rendimiento
-- **Responsive Tester**: Pruebas automáticas de responsividad
-- **Error Handling**: Manejo robusto de errores y casos edge
-- **Test Data**: Archivos de prueba en `test-data/`
+- **Performance Monitor**: Real-time performance monitoring
+- **Responsive Tester**: Automated responsiveness testing
+- **Error Handling**: Robust error handling and edge cases
+- **Test Data**: Test files in `test-data/`
 
-### Estructura de Testing
+### Testing Structure
 ```
 test-data/
-├── test-questions.md       # Preguntas de prueba
-├── malformed-questions.md  # Casos edge y errores
-test-runner.html           # Suite de pruebas automatizadas
-integration-test.html      # Pruebas de integración E2E
+├── test-questions.md       # Test questions
+├── malformed-questions.md  # Edge cases and errors
+test-runner.html           # Automated test suite
+integration-test.html      # E2E integration tests
 ```
 
-## Desarrollo
+## Development
 
-Este proyecto está implementado en **JavaScript** vanilla sin dependencias externas. Utiliza las siguientes tecnologías:
+This project is implemented in vanilla **JavaScript** without external dependencies. It uses the following technologies:
 
-- **Frontend**: HTML5 semántico, CSS3 con diseño responsivo
-- **JavaScript**: ES6+ con módulos nativos
-- **APIs**: File API para lectura de archivos locales
-- **Parsing**: Expresiones regulares optimizadas
-- **Testing**: Suite completa de pruebas automatizadas
-- **Performance**: Monitoreo y optimización en tiempo real
+- **Frontend**: Semantic HTML5, CSS3 with responsive design
+- **JavaScript**: ES6+ with native modules
+- **APIs**: File API for local file reading
+- **Parsing**: Optimized regular expressions
+- **Testing**: Complete automated test suite
+- **Performance**: Real-time monitoring and optimization
 
-### Arquitectura
+### Architecture
 
-- `app.js` - Orquestador principal y manejo de eventos
-- `markdown-parser.js` - Extracción y validación de preguntas
-- `quiz-engine.js` - Lógica del quiz y puntuación
-- `ui-controller.js` - Gestión de interfaz y navegación
-- `file-handler.js` - Carga y validación de archivos
-- `performance-monitor.js` - Monitoreo de rendimiento
-- `responsive-tester.js` - Testing de responsividad
+- `app.js` - Main orchestrator and event handling
+- `markdown-parser.js` - Question extraction and validation
+- `quiz-engine.js` - Quiz logic and scoring
+- `ui-controller.js` - Interface management and navigation
+- `file-handler.js` - File loading and validation
+- `performance-monitor.js` - Performance monitoring
+- `responsive-tester.js` - Responsiveness testing
 
-## Requisitos
+## Requirements
 
-### Mínimos
-- Navegador web moderno con soporte para ES6+
-- Archivo `Quiz.md` en el directorio raíz
+### Minimum
+- Modern web browser with ES6+ support
+- `Quiz.md` file in root directory
 
-### Recomendados
-- Servidor web local para evitar restricciones CORS
-- Resolución mínima: 375px (móvil)
-- JavaScript habilitado
+### Recommended
+- Local web server to avoid CORS restrictions
+- Minimum resolution: 375px (mobile)
+- JavaScript enabled
 
-### Navegadores Soportados
+### Supported Browsers
 - Chrome 60+
 - Firefox 55+
 - Safari 12+
 - Edge 79+
 
-## 📱 Características Responsive
+## 📱 Responsive Features
 
-- **Móvil**: ≤ 768px - Interfaz optimizada para touch
-- **Tablet**: 769px - 1024px - Diseño híbrido
-- **Desktop**: > 1024px - Experiencia completa
+- **Mobile**: ≤ 768px - Touch-optimized interface
+- **Tablet**: 769px - 1024px - Hybrid design
+- **Desktop**: > 1024px - Complete experience
 
-## Solución de Problemas
+## Troubleshooting
 
-### Error: "No se puede cargar el archivo"
-- Usa un servidor local en lugar de abrir el archivo directamente
-- Verifica que `Quiz.md` existe en el directorio raíz
+### Error: "Cannot load file"
+- Use a local server instead of opening the file directly
+- Verify that `Quiz.md` exists in the root directory
 
-### Error: "No se encontraron preguntas"
-- Revisa el formato del archivo Markdown
-- Asegúrate de que las preguntas siguen el formato esperado:
+### Error: "No questions found"
+- Check the Markdown file format
+- Make sure questions follow the expected format:
   ```markdown
-  ## Pregunta XXX
+  ## Question XXX
   
-  Contenido de la pregunta
+  Question content
   
-  A. Opción A
-  B. Opción B
+  A. Option A
+  B. Option B
   
   <as-button message="A"></as-button>
   ```
 
-### Problemas de Rendimiento
-- Abre `integration-test.html` para diagnóstico
-- Revisa la consola del navegador para warnings
-- Considera reducir el número de preguntas para archivos muy grandes
+### Performance Issues
+- Open `integration-test.html` for diagnostics
+- Check browser console for warnings
+- Consider reducing the number of questions for very large files
