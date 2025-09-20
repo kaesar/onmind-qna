@@ -16,7 +16,7 @@ class QuizApp {
         this.isInitialized = false;
         
         // Configuration
-        this.defaultFilePath = 'Quiz.md';
+        this.currentFilePath = 'Quiz.md';
         
         // Bind methods to preserve context
         this.handleStartQuiz = this.handleStartQuiz.bind(this);
@@ -37,16 +37,20 @@ class QuizApp {
             // Set up event listeners
             this.setupEventListeners();
             
-            // Load and process markdown file
-            await this.loadQuestions();
+            // Load and process markdown file with UI filename
+            await this.loadQuestions(this.uiController.getQuizFilename());
             
             this.isInitialized = true;
             console.log('Aplicación inicializada correctamente');
             
         } catch (error) {
             console.error('Error al inicializar la aplicación:', error);
-            this.uiController.updateFileStatus('error', 
-                `Error al cargar la aplicación: ${error.message}`);
+            if (this.uiController) {
+                this.uiController.updateFileStatus('error', 
+                    `Error al cargar la aplicación: ${error.message}`);
+            }
+            // Don't throw the error, let the app continue with manual loading
+            this.isInitialized = true; // Mark as initialized even if initial load fails
         }
     }
 
@@ -58,6 +62,7 @@ class QuizApp {
         document.addEventListener('startQuiz', this.handleStartQuiz);
         document.addEventListener('answerSubmitted', this.handleAnswerSubmitted);
         document.addEventListener('newQuiz', this.handleNewQuiz);
+        document.addEventListener('loadQuestions', this.handleLoadQuestions.bind(this));
         
         // Handle page visibility changes to save state
         document.addEventListener('visibilitychange', () => {
@@ -75,18 +80,24 @@ class QuizApp {
     /**
      * Load and parse questions from markdown file
      */
-    async loadQuestions() {
+    async loadQuestions(filePath = null) {
+        // Use provided filePath or current configured path
+        const targetFilePath = filePath || this.currentFilePath;
+        
         const loadingContext = {
-            filePath: this.defaultFilePath,
+            filePath: targetFilePath,
             timestamp: new Date().toISOString(),
             attempt: 1
         };
         
         try {
-            console.log(`Cargando archivo: ${this.defaultFilePath}`);
+            console.log(`Cargando archivo: ${targetFilePath}`);
             
             // Load markdown content using FileHandler
-            const markdownContent = await this.fileHandler.loadMarkdownFile(this.defaultFilePath);
+            const markdownContent = await this.fileHandler.loadMarkdownFile(targetFilePath);
+            
+            // Update current file path on successful load
+            this.currentFilePath = targetFilePath;
             
             // Parse questions using MarkdownParser
             this.questions = this.markdownParser.parseQuestions(markdownContent);
@@ -164,7 +175,7 @@ class QuizApp {
             ];
             
             for (const altPath of alternativePaths) {
-                if (altPath === this.defaultFilePath) continue;
+                if (altPath === this.currentFilePath) continue;
                 
                 try {
                     console.log(`Intentando ruta alternativa: ${altPath}`);
@@ -194,7 +205,7 @@ class QuizApp {
                     const originalValidation = this.markdownParser.enableDetailedLogging;
                     this.markdownParser.enableDetailedLogging = false;
                     
-                    const content = await this.fileHandler.loadMarkdownFile(this.defaultFilePath);
+                    const content = await this.fileHandler.loadMarkdownFile(this.currentFilePath);
                     const questions = this.markdownParser.parseQuestions(content);
                     
                     // Restore original validation setting
@@ -224,7 +235,7 @@ class QuizApp {
         const message = error.message || 'Error desconocido';
         
         if (message.includes('File not found') || message.includes('404')) {
-            return 'No se encontró el archivo "Quiz.md". Asegúrate de que el archivo existe en la carpeta del proyecto.';
+            return `No se encontró el archivo "${this.currentFilePath}". Asegúrate de que el archivo existe en la carpeta del proyecto.`;
         } else if (message.includes('Invalid markdown content') || message.includes('No questions found')) {
             return 'El archivo no contiene preguntas en el formato esperado. Verifica el formato del contenido.';
         } else if (message.includes('Network') || message.includes('fetch failed')) {
@@ -239,17 +250,45 @@ class QuizApp {
     }
 
     /**
+     * Handle load questions event from UI
+     */
+    async handleLoadQuestions(event) {
+        const { filename } = event.detail;
+        
+        try {
+            console.log(`Cargando archivo: ${filename}`);
+            
+            // Update file status to loading
+            this.uiController.updateFileStatus('loading', `Cargando archivo ${filename}...`);
+            
+            // Load questions from specified file
+            await this.loadQuestions(filename);
+            
+        } catch (error) {
+            console.error('Error al cargar archivo:', error);
+            this.uiController.updateFileStatus('error', `Error: ${error.message}`);
+        }
+    }
+
+    /**
      * Handle start quiz event from UI
      */
     handleStartQuiz(event) {
         const startContext = {
             requestedQuestions: event.detail?.questionCount,
+            filename: event.detail?.filename,
             availableQuestions: this.questions?.length,
             timestamp: new Date().toISOString()
         };
         
         try {
-            const { questionCount } = event.detail;
+            const { questionCount, filename } = event.detail;
+            
+            // Update filename if provided and different from current
+            if (filename && filename !== this.currentFilePath) {
+                console.log(`Actualizando archivo de ${this.currentFilePath} a ${filename}`);
+                this.loadQuestions(filename).catch(err => console.error('Error loading file:', err));
+            }
             
             console.log(`Iniciando quiz con ${questionCount} preguntas`, startContext);
             
@@ -347,7 +386,6 @@ class QuizApp {
             
             if (this.questions.length > 0) {
                 console.log('Preguntas recargadas exitosamente');
-                // Don't auto-start quiz, let user decide
             }
         } catch (reloadError) {
             console.error('Error en recarga automática:', reloadError);
@@ -469,6 +507,7 @@ class QuizApp {
     getStatus() {
         return {
             isInitialized: this.isInitialized,
+            currentFilePath: this.currentFilePath,
             questionsLoaded: this.questions.length,
             quizActive: !!this.quizEngine,
             currentScreen: this.uiController.currentScreen
@@ -478,10 +517,10 @@ class QuizApp {
     /**
      * Reload questions from file (for development/debugging)
      */
-    async reloadQuestions() {
+    async reloadQuestions(filePath = null) {
         try {
             console.log('Recargando preguntas...');
-            await this.loadQuestions();
+            await this.loadQuestions(filePath);
             
             // Reset quiz engine if active
             if (this.quizEngine) {

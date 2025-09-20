@@ -10,9 +10,13 @@ class UIController {
         this.resultsScreen = document.getElementById('results-screen');
         
         // Configuration elements
+        this.quizFilenameInput = document.getElementById('quiz-filename');
+        this.loadQuestionsBtn = document.getElementById('load-questions-btn');
         this.questionCountInput = document.getElementById('question-count');
         this.fileStatusDiv = document.getElementById('file-status');
         this.startQuizBtn = document.getElementById('start-quiz-btn');
+        
+
         
         // Quiz elements
         this.progressBar = document.getElementById('progress-fill');
@@ -42,8 +46,16 @@ class UIController {
 
     initializeEventListeners() {
         // Configuration screen events
+        if (this.loadQuestionsBtn) {
+            this.loadQuestionsBtn.addEventListener('click', () => this.onLoadQuestions());
+        }
+        
         if (this.startQuizBtn) {
             this.startQuizBtn.addEventListener('click', () => this.onStartQuiz());
+        }
+        
+        if (this.quizFilenameInput) {
+            this.quizFilenameInput.addEventListener('input', () => this.onFilenameChange());
         }
         
         if (this.questionCountInput) {
@@ -142,7 +154,6 @@ class UIController {
     // Configuration Screen Methods
     showConfiguration() {
         this.showScreen('config');
-        this.updateFileStatus('loading', 'Cargando archivo Quiz.md...');
     }
 
     updateFileStatus(status, message, questionsCount = 0) {
@@ -212,6 +223,13 @@ class UIController {
             console.log('Número de preguntas ajustado a mínimo: 1');
             this.saveConfiguration();
         }
+    }
+
+    getQuizFilename() {
+        if (!this.quizFilenameInput) return 'Quiz.md';
+        
+        const filename = this.quizFilenameInput.value.trim();
+        return filename || 'Quiz.md';
     }
 
     getQuestionCount() {
@@ -639,10 +657,11 @@ class UIController {
     // Event Handlers
     onStartQuiz() {
         const questionCount = this.getQuestionCount();
+        const filename = this.getQuizFilename();
         
         // Dispatch custom event for app to handle
         const event = new CustomEvent('startQuiz', {
-            detail: { questionCount }
+            detail: { questionCount, filename }
         });
         document.dispatchEvent(event);
     }
@@ -670,6 +689,24 @@ class UIController {
         this.saveConfigTimeout = setTimeout(() => {
             this.saveConfiguration();
         }, 500); // Save after 500ms of no changes
+    }
+
+    onFilenameChange() {
+        // Auto-save configuration with debouncing
+        clearTimeout(this.saveConfigTimeout);
+        this.saveConfigTimeout = setTimeout(() => {
+            this.saveConfiguration();
+        }, 500); // Save configuration but don't auto-load
+    }
+
+    onLoadQuestions() {
+        const filename = this.getQuizFilename();
+        
+        // Dispatch event to load questions from specified file
+        const event = new CustomEvent('loadQuestions', {
+            detail: { filename }
+        });
+        document.dispatchEvent(event);
     }
 
     onOptionSelected(optionElement) {
@@ -944,6 +981,7 @@ class UIController {
     saveConfiguration() {
         try {
             const config = {
+                filename: this.getQuizFilename(),
                 questionCount: this.getQuestionCount(),
                 lastSaved: new Date().toISOString(),
                 version: '1.0'
@@ -967,6 +1005,10 @@ class UIController {
                 
                 // Validate configuration structure
                 if (config && typeof config.questionCount === 'number') {
+                    if (this.quizFilenameInput && config.filename) {
+                        this.quizFilenameInput.value = config.filename;
+                        console.log(`Nombre de archivo restaurado: ${config.filename}`);
+                    }
                     if (this.questionCountInput) {
                         // Ensure the value is within valid range
                         const questionCount = Math.max(1, Math.min(config.questionCount, 100));
@@ -988,9 +1030,12 @@ class UIController {
     }
 
     setDefaultConfiguration() {
+        if (this.quizFilenameInput) {
+            this.quizFilenameInput.value = 'Quiz.md';
+        }
         if (this.questionCountInput) {
             this.questionCountInput.value = 10;
-            console.log('Configuración por defecto aplicada: 10 preguntas');
+            console.log('Configuración por defecto aplicada: Quiz.md, 10 preguntas');
         }
     }
 
@@ -1029,6 +1074,7 @@ class UIController {
         try {
             const saved = localStorage.getItem('quiz-config');
             const current = {
+                filename: this.getQuizFilename(),
                 questionCount: this.getQuestionCount(),
                 totalQuestionsAvailable: this.totalQuestionsAvailable,
                 currentScreen: this.currentScreen

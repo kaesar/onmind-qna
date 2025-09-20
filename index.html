@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Questions aNd Answers (QNA) - Trivia Interactivo</title>
+    <title>Questions aNd Answers (QNA) - Trivia/Quiz Interactivo</title>
     <meta name="description" content="Aplicación de quiz interactivo basada en archivos Markdown">
     <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -14,7 +14,7 @@
             <div class="header-content">
                 <div class="header-text">
                     <h1>Questions aNd Answers (QNA)</h1>
-                    <p>Trivia interactivo basado en contenido Markdown</p>
+                    <p>Trivia/Quiz interactivo basado en contenido Markdown</p>
                 </div>
                 <div class="theme-toggle">
                     <button onclick="toggleTheme()" class="theme-btn" id="theme-btn">🌙</button>
@@ -28,6 +28,18 @@
                 <h2>Configuración del Quiz</h2>
                 <p>Personaliza tu experiencia de quiz antes de comenzar.</p>
                 
+                <div class="config-section">
+                    <label for="quiz-filename">Archivo de preguntas:</label>
+                    <input 
+                        type="text" 
+                        id="quiz-filename" 
+                        value="Quiz.md"
+                        placeholder="Quiz.md"
+                        aria-describedby="quiz-filename-help"
+                    >
+                    <small id="quiz-filename-help">Nombre del archivo Markdown con las preguntas</small>
+                </div>
+
                 <div class="config-section">
                     <label for="question-count">Número de preguntas:</label>
                     <input 
@@ -51,6 +63,9 @@
                 </div>
 
                 <div class="text-center">
+                    <button id="load-questions-btn" class="btn btn-secondary">
+                        Cargar Preguntas
+                    </button>
                     <button id="start-quiz-btn" class="btn" disabled>
                         Iniciar Quiz
                     </button>
@@ -134,6 +149,12 @@
             </div>
         </main>
     </div>
+
+    <style>
+        .text-center .btn {
+            margin: 0 0.25rem;
+        }
+    </style>
 
     <!-- Scripts - Load components first, then main app -->
     <script src="js/theme-toggle.js"></script>

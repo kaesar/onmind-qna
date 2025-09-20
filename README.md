@@ -1,6 +1,6 @@
 # Questions aNd Answers (OnMind-QNA)
 
-Interactive and simple quiz web application that uses Markdown files as content database.
+Interactive and simple web application that uses Markdown files as content database for quiz or trivia.
 
 ## Description
 
@@ -11,6 +11,7 @@ This application allows creating interactive quizzes from the `Quiz.md` file, au
 - Responsive web interface
 - Automatic question extraction from Markdown
 - Random question selection
+- Configurable question file (`Quiz.md` by default)
 - Configurable number of questions (10 by default)
 - Detailed scoring and results
 - Multiple answer support
@@ -74,7 +75,9 @@ Just open a browser and use the address: `http://localhost:8000`
 
 ## Application Usage
 
-1. **Configure**: Select the desired number of questions (1-50)
+1. **Configure**: 
+   - Set the question file name (default: `Quiz.md`)
+   - Select the desired number of questions (1-50)
 2. **Start**: Click "Start Quiz"
 3. **Answer**: Select an option for each question
 4. **Navigate**: Use "Next Question" to advance
@@ -142,7 +145,7 @@ This project is implemented in vanilla **JavaScript** without external dependenc
 
 ### Minimum
 - Modern web browser with ES6+ support
-- `Quiz.md` file in root directory
+- Markdown file with questions in root directory (`Quiz.md` by default)
 
 ### Recommended
 - Local web server to avoid CORS restrictions
@@ -165,7 +168,8 @@ This project is implemented in vanilla **JavaScript** without external dependenc
 
 ### Error: "Cannot load file"
 - Use a local server instead of opening the file directly
-- Verify that `Quiz.md` exists in the root directory
+- Verify that the specified question file exists in the root directory
+- Check that the filename is correct in the configuration
 
 ### Error: "No questions found"
 - Check the Markdown file format
@@ -180,6 +184,7 @@ This project is implemented in vanilla **JavaScript** without external dependenc
   
   <as-button message="A"></as-button>
   ```
+- Verify the correct filename is configured in the application
 
 ### Performance Issues
 - Open `integration-test.html` for diagnostics

@@ -17,7 +17,7 @@ RUN mkdir -p /app/dist && \
 FROM nginx:1.25-alpine
 
 # Metadatos del contenedor
-LABEL maintainer="Questions aNd Answers (QNA) Team"
+LABEL maintainer="OnMind by Cesar Arcila"
 LABEL description="Aplicación de quiz interactivo basada en archivos Markdown"
 LABEL version="1.0.0"
 
