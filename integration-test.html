@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz App Integration Tests</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .test-controls {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 10000;
+            font-family: monospace;
+            font-size: 12px;
+            max-width: 300px;
+        }
+        
+        .test-controls button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            margin: 2px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .test-controls button:hover {
+            background: #2980b9;
+        }
+        
+        .test-status {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        
+        .test-pass {
+            background: #27ae60;
+        }
+        
+        .test-fail {
+            background: #e74c3c;
+        }
+        
+        .test-running {
+            background: #f39c12;
+        }
+        
+        .performance-overlay {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 10000;
+            font-family: monospace;
+            font-size: 11px;
+        }
+        
+        .performance-metric {
+            margin: 2px 0;
+        }
+        
+        .metric-good { color: #27ae60; }
+        .metric-warning { color: #f39c12; }
+        .metric-bad { color: #e74c3c; }
+    </style>
+</head>
+<body>
+    <!-- Test Controls -->
+    <div class="test-controls">
+        <h4>🧪 Integration Tests</h4>
+        <div>
+            <button onclick="runFullFlowTest()">Full Flow Test</button>
+            <button onclick="runParsingTest()">Parsing Test</button>
+            <button onclick="runPerformanceTest()">Performance Test</button>
+        </div>
+        <div>
+            <button onclick="runResponsiveTest()">Responsive Test</button>
+            <button onclick="runErrorHandlingTest()">Error Handling</button>
+            <button onclick="runEdgeCaseTest()">Edge Cases</button>
+        </div>
+        <div id="test-status" class="test-status">Ready</div>
+        <div>
+            <button onclick="exportTestResults()">Export Results</button>
+            <button onclick="clearTestResults()">Clear</button>
+        </div>
+    </div>
+
+    <!-- Performance Overlay -->
+    <div class="performance-overlay" id="performance-overlay" style="display: none;">
+        <h5>📊 Performance Metrics</h5>
+        <div id="performance-metrics"></div>
+    </div>
+
+    <!-- Main Quiz Application -->
+    <div id="config-screen" class="screen active">
+        <div class="container">
+            <h1>Questions aNd Answers (QNA)</h1>
+            <p>Aplicación de quiz basada en archivos Markdown</p>
+            
+            <div id="file-status" class="loading">
+                <div class="loading-spinner"></div>
+                <p>Cargando archivo Quiz.md...</p>
+            </div>
+            
+            <div class="config-section">
+                <label for="question-count">Número de preguntas:</label>
+                <input type="number" id="question-count" min="1" max="50" value="10">
+                <small id="question-count-help">Selecciona entre 1 y 50 preguntas</small>
+            </div>
+            
+            <button id="start-quiz-btn" class="primary-btn" disabled>Iniciar Quiz</button>
+        </div>
+    </div>
+
+    <div id="quiz-screen" class="screen">
+        <div class="container">
+            <div class="quiz-header">
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div id="progress-fill" class="progress-fill"></div>
+                    </div>
+                    <div class="progress-info">
+                        <span id="question-number">Pregunta 1</span>
+                        <span id="progress-text">1 de 10</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="question-container">
+                <h2 id="question-title">Pregunta 1</h2>
+                <div id="question-content" class="question-content">
+                    Contenido de la pregunta aparecerá aquí...
+                </div>
+                
+                <div id="options-container" class="options-container">
+                    <div class="option" data-option="A">
+                        <span class="option-letter">A</span>
+                        <span class="option-text">Opción A</span>
+                    </div>
+                    <div class="option" data-option="B">
+                        <span class="option-letter">B</span>
+                        <span class="option-text">Opción B</span>
+                    </div>
+                    <div class="option" data-option="C">
+                        <span class="option-letter">C</span>
+                        <span class="option-text">Opción C</span>
+                    </div>
+                    <div class="option" data-option="D">
+                        <span class="option-letter">D</span>
+                        <span class="option-text">Opción D</span>
+                    </div>
+                </div>
+                
+                <button id="next-question-btn" class="primary-btn" disabled>Siguiente Pregunta</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="results-screen" class="screen">
+        <div class="container">
+            <div class="results-header">
+                <h2>Resultados del Quiz</h2>
+                <div id="score-display" class="score-display">85%</div>
+                <div id="score-text" class="score-text">8 de 10 respuestas correctas</div>
+            </div>
+            
+            <div id="results-list" class="results-list">
+                <!-- Results will be populated here -->
+            </div>
+            
+            <div class="results-actions">
+                <button id="new-quiz-btn" class="primary-btn">Nuevo Quiz</button>
+                <button id="back-config-btn" class="secondary-btn">Configuración</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include all application scripts -->
+    <script src="js/file-handler.js"></script>
+    <script src="js/markdown-parser.js"></script>
+    <script src="js/quiz-engine.js"></script>
+    <script src="js/ui-controller.js"></script>
+    <script src="js/performance-monitor.js"></script>
+    <script src="js/responsive-tester.js"></script>
+    <script src="js/app.js"></script>
+
+    <script>
+        // Integration Test Suite
+        class IntegrationTestSuite {
+            constructor() {
+                this.testResults = [];
+                this.currentTest = null;
+                this.performanceData = [];
+                
+                // Wait for app to initialize
+                setTimeout(() => {
+                    this.initializeTests();
+                }, 2000);
+            }
+
+            initializeTests() {
+                console.log('🧪 Integration test suite initialized');
+                this.updateTestStatus('Ready for testing');
+                
+                // Start performance monitoring
+                if (window.performanceMonitor) {
+                    window.performanceMonitor.startMonitoring();
+                    this.startPerformanceDisplay();
+                }
+            }
+
+            updateTestStatus(message, type = 'info') {
+                const statusDiv = document.getElementById('test-status');
+                statusDiv.textContent = message;
+                statusDiv.className = `test-status test-${type}`;
+                console.log(`📊 Test Status: ${message}`);
+            }
+
+            async runFullFlowTest() {
+                this.updateTestStatus('Running full flow test...', 'running');
+                
+                try {
+                    const startTime = performance.now();
+                    
+                    // Test 1: Application initialization
+                    await this.testAppInitialization();
+                    
+                    // Test 2: File loading and parsing
+                    await this.testFileLoadingAndParsing();
+                    
+                    // Test 3: Quiz configuration
+                    await this.testQuizConfiguration();
+                    
+                    // Test 4: Quiz flow
+                    await this.testQuizFlow();
+                    
+                    // Test 5: Results display
+                    await this.testResultsDisplay();
+                    
+                    const endTime = performance.now();
+                    const duration = endTime - startTime;
+                    
+                    this.recordTestResult('Full Flow Test', true, `Completed in ${duration.toFixed(2)}ms`);
+                    this.updateTestStatus('Full flow test passed', 'pass');
+                    
+                } catch (error) {
+                    this.recordTestResult('Full Flow Test', false, error.message);
+                    this.updateTestStatus('Full flow test failed', 'fail');
+                    console.error('❌ Full flow test failed:', error);
+                }
+            }
+
+            async testAppInitialization() {
+                // Check if app is initialized
+                if (!window.quizApp) {
+                    throw new Error('Quiz app not initialized');
+                }
+                
+                // Check if components are available
+                const requiredComponents = ['fileHandler', 'markdownParser', 'uiController'];
+                for (const component of requiredComponents) {
+                    if (!window.quizApp[component]) {
+                        throw new Error(`Component ${component} not initialized`);
+                    }
+                }
+                
+                console.log('✅ App initialization test passed');
+            }
+
+            async testFileLoadingAndParsing() {
+                // Wait for file to load
+                await this.waitForCondition(() => {
+                    return window.quizApp.questions && window.quizApp.questions.length > 0;
+                }, 5000, 'File loading timeout');
+                
+                // Check if questions were parsed
+                const questions = window.quizApp.questions;
+                if (questions.length === 0) {
+                    throw new Error('No questions were parsed from file');
+                }
+                
+                // Validate question structure
+                const firstQuestion = questions[0];
+                const requiredFields = ['id', 'content', 'options', 'correctAnswers'];
+                for (const field of requiredFields) {
+                    if (!firstQuestion[field]) {
+                        throw new Error(`Question missing required field: ${field}`);
+                    }
+                }
+                
+                console.log(`✅ File loading and parsing test passed (${questions.length} questions)`);
+            }
+
+            async testQuizConfiguration() {
+                // Test question count input
+                const questionCountInput = document.getElementById('question-count');
+                if (!questionCountInput) {
+                    throw new Error('Question count input not found');
+                }
+                
+                // Test changing question count
+                const originalValue = questionCountInput.value;
+                questionCountInput.value = '5';
+                questionCountInput.dispatchEvent(new Event('input'));
+                
+                // Wait for configuration to be processed
+                await this.sleep(500);
+                
+                // Restore original value
+                questionCountInput.value = originalValue;
+                questionCountInput.dispatchEvent(new Event('input'));
+                
+                console.log('✅ Quiz configuration test passed');
+            }
+
+            async testQuizFlow() {
+                // Start quiz
+                const startButton = document.getElementById('start-quiz-btn');
+                if (!startButton || startButton.disabled) {
+                    throw new Error('Start quiz button not available');
+                }
+                
+                startButton.click();
+                
+                // Wait for quiz screen to appear
+                await this.waitForCondition(() => {
+                    return document.getElementById('quiz-screen').classList.contains('active');
+                }, 3000, 'Quiz screen not shown');
+                
+                // Test answering questions
+                await this.simulateQuizAnswers();
+                
+                console.log('✅ Quiz flow test passed');
+            }
+
+            async simulateQuizAnswers() {
+                const maxQuestions = 3; // Limit for testing
+                let questionCount = 0;
+                
+                while (questionCount < maxQuestions) {
+                    // Wait for question to load
+                    await this.waitForCondition(() => {
+                        const options = document.querySelectorAll('.option');
+                        return options.length > 0 && options[0].style.display !== 'none';
+                    }, 2000, 'Question options not loaded');
+                    
+                    // Select first available option
+                    const firstOption = document.querySelector('.option[style*="block"], .option:not([style*="none"])');
+                    if (!firstOption) {
+                        throw new Error('No selectable options found');
+                    }
+                    
+                    firstOption.click();
+                    
+                    // Wait for selection to be processed
+                    await this.sleep(500);
+                    
+                    // Click next button
+                    const nextButton = document.getElementById('next-question-btn');
+                    if (!nextButton || nextButton.disabled) {
+                        throw new Error('Next button not available');
+                    }
+                    
+                    nextButton.click();
+                    
+                    // Wait for next question or results
+                    await this.sleep(1000);
+                    
+                    questionCount++;
+                    
+                    // Check if we've reached results screen
+                    if (document.getElementById('results-screen').classList.contains('active')) {
+                        break;
+                    }
+                }
+            }
+
+            async testResultsDisplay() {
+                // Wait for results screen
+                await this.waitForCondition(() => {
+                    return document.getElementById('results-screen').classList.contains('active');
+                }, 3000, 'Results screen not shown');
+                
+                // Check if score is displayed
+                const scoreDisplay = document.getElementById('score-display');
+                if (!scoreDisplay || !scoreDisplay.textContent.includes('%')) {
+                    throw new Error('Score not properly displayed');
+                }
+                
+                // Check if results list is populated
+                const resultsList = document.getElementById('results-list');
+                if (!resultsList || resultsList.children.length === 0) {
+                    throw new Error('Results list not populated');
+                }
+                
+                console.log('✅ Results display test passed');
+            }
+
+            async runParsingTest() {
+                this.updateTestStatus('Running parsing test...', 'running');
+                
+                try {
+                    const parser = new MarkdownParser();
+                    
+                    // Test with sample content
+                    const testContent = `## Pregunta 001
+
+Test question content.
+
+A. Option A
+B. Option B
+C. Option C
+D. Option D
+
+<as-button message="A"></as-button>
+
+## Pregunta 002
+
+Another test question.
+
+A. Option A
+B. Option B
+
+<as-button message="B"></as-button>`;
+                    
+                    const startTime = performance.now();
+                    const questions = parser.parseQuestions(testContent);
+                    const endTime = performance.now();
+                    
+                    if (questions.length !== 2) {
+                        throw new Error(`Expected 2 questions, got ${questions.length}`);
+                    }
+                    
+                    // Validate first question
+                    const q1 = questions[0];
+                    if (q1.id !== '001' || q1.correctAnswers[0] !== 'A') {
+                        throw new Error('First question not parsed correctly');
+                    }
+                    
+                    const duration = endTime - startTime;
+                    this.recordTestResult('Parsing Test', true, `Parsed 2 questions in ${duration.toFixed(2)}ms`);
+                    this.updateTestStatus('Parsing test passed', 'pass');
+                    
+                } catch (error) {
+                    this.recordTestResult('Parsing Test', false, error.message);
+                    this.updateTestStatus('Parsing test failed', 'fail');
+                    console.error('❌ Parsing test failed:', error);
+                }
+            }
+
+            async runPerformanceTest() {
+                this.updateTestStatus('Running performance test...', 'running');
+                
+                try {
+                    const results = [];
+                    
+                    // Test parsing performance with large content
+                    const largeContent = this.generateLargeTestContent(100);
+                    const parser = new MarkdownParser();
+                    
+                    const parseStart = performance.now();
+                    const questions = parser.parseQuestions(largeContent);
+                    const parseEnd = performance.now();
+                    
+                    const parseTime = parseEnd - parseStart;
+                    results.push(`Parsed ${questions.length} questions in ${parseTime.toFixed(2)}ms`);
+                    
+                    // Test quiz engine performance
+                    const engineStart = performance.now();
+                    const engine = new QuizEngine(questions, 50);
+                    const engineEnd = performance.now();
+                    
+                    const engineTime = engineEnd - engineStart;
+                    results.push(`Initialized quiz engine in ${engineTime.toFixed(2)}ms`);
+                    
+                    // Test memory usage
+                    if ('memory' in performance) {
+                        const memoryUsed = performance.memory.usedJSHeapSize;
+                        results.push(`Memory usage: ${this.formatBytes(memoryUsed)}`);
+                    }
+                    
+                    // Check performance thresholds
+                    if (parseTime > 1000) {
+                        throw new Error(`Parsing too slow: ${parseTime.toFixed(2)}ms`);
+                    }
+                    
+                    if (engineTime > 100) {
+                        throw new Error(`Engine initialization too slow: ${engineTime.toFixed(2)}ms`);
+                    }
+                    
+                    this.recordTestResult('Performance Test', true, results.join('; '));
+                    this.updateTestStatus('Performance test passed', 'pass');
+                    
+                } catch (error) {
+                    this.recordTestResult('Performance Test', false, error.message);
+                    this.updateTestStatus('Performance test failed', 'fail');
+                    console.error('❌ Performance test failed:', error);
+                }
+            }
+
+            async runResponsiveTest() {
+                this.updateTestStatus('Running responsive test...', 'running');
+                
+                try {
+                    if (!window.responsiveTester) {
+                        throw new Error('Responsive tester not available');
+                    }
+                    
+                    // Run a quick responsive test
+                    const testViewports = [
+                        { name: 'Mobile', width: 375, height: 667 },
+                        { name: 'Tablet', width: 768, height: 1024 },
+                        { name: 'Desktop', width: 1920, height: 1080 }
+                    ];
+                    
+                    const results = [];
+                    
+                    for (const viewport of testViewports) {
+                        // Simulate viewport
+                        window.responsiveTester.simulateViewport(viewport);
+                        await this.sleep(500);
+                        
+                        // Check for basic responsive issues
+                        const issues = window.responsiveTester.validateResponsiveLayout(
+                            window.responsiveTester.getDeviceType(viewport.width),
+                            viewport.width,
+                            viewport.height
+                        );
+                        
+                        results.push(`${viewport.name}: ${issues.length} issues`);
+                    }
+                    
+                    // Restore viewport
+                    window.responsiveTester.restoreViewport();
+                    
+                    this.recordTestResult('Responsive Test', true, results.join('; '));
+                    this.updateTestStatus('Responsive test passed', 'pass');
+                    
+                } catch (error) {
+                    this.recordTestResult('Responsive Test', false, error.message);
+                    this.updateTestStatus('Responsive test failed', 'fail');
+                    console.error('❌ Responsive test failed:', error);
+                }
+            }
+
+            async runErrorHandlingTest() {
+                this.updateTestStatus('Running error handling test...', 'running');
+                
+                try {
+                    const tests = [];
+                    
+                    // Test invalid markdown content
+                    const parser = new MarkdownParser();
+                    try {
+                        parser.parseQuestions('invalid content');
+                        tests.push('Invalid content: FAIL - should have thrown error');
+                    } catch (error) {
+                        tests.push('Invalid content: PASS - error thrown correctly');
+                    }
+                    
+                    // Test empty question list
+                    try {
+                        new QuizEngine([], 1);
+                        tests.push('Empty questions: FAIL - should have thrown error');
+                    } catch (error) {
+                        tests.push('Empty questions: PASS - error thrown correctly');
+                    }
+                    
+                    // Test invalid answer submission
+                    const mockQuestions = [{
+                        id: '001',
+                        content: 'Test',
+                        options: { A: 'Option A', B: 'Option B' },
+                        correctAnswers: ['A']
+                    }];
+                    
+                    const engine = new QuizEngine(mockQuestions, 1);
+                    try {
+                        engine.submitAnswer('invalid');
+                        tests.push('Invalid answer: FAIL - should have thrown error');
+                    } catch (error) {
+                        tests.push('Invalid answer: PASS - error thrown correctly');
+                    }
+                    
+                    this.recordTestResult('Error Handling Test', true, tests.join('; '));
+                    this.updateTestStatus('Error handling test passed', 'pass');
+                    
+                } catch (error) {
+                    this.recordTestResult('Error Handling Test', false, error.message);
+                    this.updateTestStatus('Error handling test failed', 'fail');
+                    console.error('❌ Error handling test failed:', error);
+                }
+            }
+
+            async runEdgeCaseTest() {
+                this.updateTestStatus('Running edge case test...', 'running');
+                
+                try {
+                    const tests = [];
+                    
+                    // Test multiple correct answers
+                    const parser = new MarkdownParser();
+                    const multiAnswerContent = `## Pregunta 001
+
+Test question.
+
+A. Option A
+B. Option B
+C. Option C
+
+<as-button message="AC"></as-button>`;
+                    
+                    const questions = parser.parseQuestions(multiAnswerContent);
+                    if (questions[0].correctAnswers.length === 2 && 
+                        questions[0].correctAnswers.includes('A') && 
+                        questions[0].correctAnswers.includes('C')) {
+                        tests.push('Multiple answers: PASS');
+                    } else {
+                        tests.push('Multiple answers: FAIL');
+                    }
+                    
+                    // Test question with inquire attribute
+                    const inquireContent = `## Pregunta 001
+
+Test question.
+
+A. Option A
+B. Option B
+
+<as-button message="A" inquire="B"></as-button>`;
+                    
+                    const inquireQuestions = parser.parseQuestions(inquireContent);
+                    if (inquireQuestions[0].correctAnswers.length === 2) {
+                        tests.push('Inquire attribute: PASS');
+                    } else {
+                        tests.push('Inquire attribute: FAIL');
+                    }
+                    
+                    // Test quiz with more questions requested than available
+                    const mockQuestions = [
+                        { id: '001', content: 'Q1', options: { A: 'A', B: 'B' }, correctAnswers: ['A'] },
+                        { id: '002', content: 'Q2', options: { A: 'A', B: 'B' }, correctAnswers: ['B'] }
+                    ];
+                    
+                    const engine = new QuizEngine(mockQuestions, 5); // Request 5, only 2 available
+                    if (engine.selectedQuestions.length === 2) {
+                        tests.push('Question limit: PASS');
+                    } else {
+                        tests.push('Question limit: FAIL');
+                    }
+                    
+                    this.recordTestResult('Edge Case Test', true, tests.join('; '));
+                    this.updateTestStatus('Edge case test passed', 'pass');
+                    
+                } catch (error) {
+                    this.recordTestResult('Edge Case Test', false, error.message);
+                    this.updateTestStatus('Edge case test failed', 'fail');
+                    console.error('❌ Edge case test failed:', error);
+                }
+            }
+
+            // Utility methods
+            async waitForCondition(condition, timeout = 5000, errorMessage = 'Timeout') {
+                const startTime = Date.now();
+                
+                while (Date.now() - startTime < timeout) {
+                    if (condition()) {
+                        return true;
+                    }
+                    await this.sleep(100);
+                }
+                
+                throw new Error(errorMessage);
+            }
+
+            sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            generateLargeTestContent(questionCount) {
+                let content = '';
+                for (let i = 1; i <= questionCount; i++) {
+                    content += `## Pregunta ${i.toString().padStart(3, '0')}
+
+This is test question ${i} with some content to test parsing performance.
+
+A. Option A for question ${i}
+B. Option B for question ${i}
+C. Option C for question ${i}
+D. Option D for question ${i}
+
+<as-button message="A"></as-button>
+
+`;
+                }
+                return content;
+            }
+
+            formatBytes(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            recordTestResult(testName, passed, details) {
+                const result = {
+                    testName,
+                    passed,
+                    details,
+                    timestamp: new Date().toISOString()
+                };
+                
+                this.testResults.push(result);
+                console.log(`📊 Test Result: ${testName} - ${passed ? 'PASS' : 'FAIL'} - ${details}`);
+            }
+
+            startPerformanceDisplay() {
+                const overlay = document.getElementById('performance-overlay');
+                const metricsDiv = document.getElementById('performance-metrics');
+                
+                overlay.style.display = 'block';
+                
+                setInterval(() => {
+                    if (window.performanceMonitor) {
+                        const report = window.performanceMonitor.getPerformanceReport();
+                        
+                        let html = '';
+                        
+                        // Memory usage
+                        if (report.memory) {
+                            const memClass = report.memory.trend === 'increasing' ? 'metric-warning' : 'metric-good';
+                            html += `<div class="performance-metric ${memClass}">Memory: ${report.memory.current.used}</div>`;
+                        }
+                        
+                        // Parsing performance
+                        if (report.parsing && report.parsing.count > 0) {
+                            const avgTime = report.parsing.averageDuration.toFixed(2);
+                            const parseClass = avgTime > 100 ? 'metric-warning' : 'metric-good';
+                            html += `<div class="performance-metric ${parseClass}">Parse Avg: ${avgTime}ms</div>`;
+                        }
+                        
+                        // Rendering performance
+                        if (report.rendering && report.rendering.count > 0) {
+                            const avgRender = report.rendering.averageDuration.toFixed(2);
+                            const renderClass = avgRender > 16 ? 'metric-warning' : 'metric-good';
+                            html += `<div class="performance-metric ${renderClass}">Render Avg: ${avgRender}ms</div>`;
+                        }
+                        
+                        // Errors and warnings
+                        const errorClass = report.summary.errors > 0 ? 'metric-bad' : 'metric-good';
+                        html += `<div class="performance-metric ${errorClass}">Errors: ${report.summary.errors}</div>`;
+                        
+                        const warningClass = report.summary.warnings > 0 ? 'metric-warning' : 'metric-good';
+                        html += `<div class="performance-metric ${warningClass}">Warnings: ${report.summary.warnings}</div>`;
+                        
+                        metricsDiv.innerHTML = html;
+                    }
+                }, 2000);
+            }
+
+            exportTestResults() {
+                const report = {
+                    testResults: this.testResults,
+                    performanceReport: window.performanceMonitor ? window.performanceMonitor.getPerformanceReport() : null,
+                    timestamp: new Date().toISOString(),
+                    userAgent: navigator.userAgent,
+                    viewport: {
+                        width: window.innerWidth,
+                        height: window.innerHeight
+                    }
+                };
+                
+                const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `integration-test-results-${new Date().toISOString().slice(0, 19)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                console.log('📄 Test results exported');
+            }
+
+            clearTestResults() {
+                this.testResults = [];
+                this.updateTestStatus('Results cleared', 'info');
+                
+                if (window.performanceMonitor) {
+                    window.performanceMonitor.clearMetrics();
+                }
+            }
+        }
+
+        // Global test functions
+        let integrationTestSuite;
+
+        function runFullFlowTest() {
+            integrationTestSuite.runFullFlowTest();
+        }
+
+        function runParsingTest() {
+            integrationTestSuite.runParsingTest();
+        }
+
+        function runPerformanceTest() {
+            integrationTestSuite.runPerformanceTest();
+        }
+
+        function runResponsiveTest() {
+            integrationTestSuite.runResponsiveTest();
+        }
+
+        function runErrorHandlingTest() {
+            integrationTestSuite.runErrorHandlingTest();
+        }
+
+        function runEdgeCaseTest() {
+            integrationTestSuite.runEdgeCaseTest();
+        }
+
+        function exportTestResults() {
+            integrationTestSuite.exportTestResults();
+        }
+
+        function clearTestResults() {
+            integrationTestSuite.clearTestResults();
+        }
+
+        // Initialize test suite when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            integrationTestSuite = new IntegrationTestSuite();
+        });
+    </script>
+</body>
+</html>

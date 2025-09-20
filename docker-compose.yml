@@ -1,0 +1,71 @@
+# Docker Compose para Questions aNd Answers (QNA)
+# Configuración para desarrollo y producción
+
+version: '3.8'
+
+services:
+  quiz-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: quiz-markdown-app
+    ports:
+      - "8080:80"
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=80
+    volumes:
+      # Montar logs para debugging (opcional)
+      - ./logs:/var/log/quiz-app
+      # Montar archivo de preguntas para actualizaciones en caliente (desarrollo)
+      - ./Quiz.md:/usr/share/nginx/html/Quiz.md:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.quiz-app.rule=Host(`quiz.localhost`)"
+      - "traefik.http.services.quiz-app.loadbalancer.server.port=80"
+    networks:
+      - quiz-network
+
+  # Servicio opcional para desarrollo con hot reload
+  quiz-dev:
+    profiles: ["dev"]
+    image: nginx:1.25-alpine
+    container_name: quiz-markdown-dev
+    ports:
+      - "3000:80"
+    volumes:
+      - .:/usr/share/nginx/html:ro
+      - ./nginx-dev.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped
+    networks:
+      - quiz-network
+
+  # Servicio opcional para monitoreo
+  nginx-exporter:
+    profiles: ["monitoring"]
+    image: nginx/nginx-prometheus-exporter:0.10.0
+    container_name: quiz-nginx-exporter
+    ports:
+      - "9113:9113"
+    command:
+      - -nginx.scrape-uri=http://quiz-app/metrics
+    depends_on:
+      - quiz-app
+    networks:
+      - quiz-network
+
+networks:
+  quiz-network:
+    driver: bridge
+    name: quiz-markdown-network
+
+volumes:
+  quiz-logs:
+    driver: local

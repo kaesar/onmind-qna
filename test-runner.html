@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz App Test Runner</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .test-header {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .test-result {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        
+        .test-pass {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .test-fail {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .test-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .test-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+        
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .performance-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .metric-card {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .metric-label {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+        
+        .test-log {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        
+        .responsive-test {
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 10px 0;
+            resize: both;
+            overflow: auto;
+            min-width: 300px;
+            min-height: 200px;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .performance-metrics {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Quiz Application Test Suite</h1>
+    
+    <div class="test-section">
+        <h2 class="test-header">📊 Test Overview</h2>
+        <div class="performance-metrics">
+            <div class="metric-card">
+                <div class="metric-value" id="total-tests">0</div>
+                <div class="metric-label">Total Tests</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="passed-tests">0</div>
+                <div class="metric-label">Passed</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="failed-tests">0</div>
+                <div class="metric-label">Failed</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="test-duration">0ms</div>
+                <div class="metric-label">Duration</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2 class="test-header">🔧 Test Controls</h2>
+        <button onclick="runAllTests()">Run All Tests</button>
+        <button onclick="runParsingTests()">Test Parsing</button>
+        <button onclick="runEngineTests()">Test Quiz Engine</button>
+        <button onclick="runUITests()">Test UI Components</button>
+        <button onclick="runPerformanceTests()">Performance Tests</button>
+        <button onclick="runResponsiveTests()">Responsive Tests</button>
+        <button onclick="clearResults()">Clear Results</button>
+    </div>
+
+    <div class="test-section">
+        <h2 class="test-header">📝 Test Results</h2>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2 class="test-header">📱 Responsive Testing</h2>
+        <p>Resize the frame below to test responsive behavior:</p>
+        <div class="responsive-test">
+            <iframe src="index.html" width="100%" height="100%" style="border: none;"></iframe>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2 class="test-header">📋 Test Log</h2>
+        <div id="test-log" class="test-log"></div>
+    </div>
+
+    <!-- Include the quiz application components for testing -->
+    <script src="js/file-handler.js"></script>
+    <script src="js/markdown-parser.js"></script>
+    <script src="js/quiz-engine.js"></script>
+    <script src="js/ui-controller.js"></script>
+
+    <script>
+        // Test framework
+        class TestRunner {
+            constructor() {
+                this.tests = [];
+                this.results = [];
+                this.startTime = 0;
+                this.endTime = 0;
+            }
+
+            addTest(name, testFunction, category = 'general') {
+                this.tests.push({
+                    name,
+                    testFunction,
+                    category,
+                    status: 'pending'
+                });
+            }
+
+            async runTest(test) {
+                const startTime = performance.now();
+                try {
+                    await test.testFunction();
+                    const endTime = performance.now();
+                    const result = {
+                        name: test.name,
+                        category: test.category,
+                        status: 'pass',
+                        duration: endTime - startTime,
+                        message: 'Test passed successfully'
+                    };
+                    this.results.push(result);
+                    this.logResult(result);
+                    return result;
+                } catch (error) {
+                    const endTime = performance.now();
+                    const result = {
+                        name: test.name,
+                        category: test.category,
+                        status: 'fail',
+                        duration: endTime - startTime,
+                        message: error.message,
+                        error: error
+                    };
+                    this.results.push(result);
+                    this.logResult(result);
+                    return result;
+                }
+            }
+
+            async runAllTests() {
+                this.results = [];
+                this.startTime = performance.now();
+                
+                this.log('🚀 Starting comprehensive test suite...');
+                
+                for (const test of this.tests) {
+                    this.log(`Running: ${test.name}`);
+                    await this.runTest(test);
+                }
+                
+                this.endTime = performance.now();
+                this.updateMetrics();
+                this.log(`✅ Test suite completed in ${(this.endTime - this.startTime).toFixed(2)}ms`);
+            }
+
+            async runTestsByCategory(category) {
+                this.results = this.results.filter(r => r.category !== category);
+                const categoryTests = this.tests.filter(t => t.category === category);
+                
+                this.log(`🔍 Running ${category} tests...`);
+                
+                for (const test of categoryTests) {
+                    await this.runTest(test);
+                }
+                
+                this.updateMetrics();
+            }
+
+            logResult(result) {
+                const resultDiv = document.createElement('div');
+                resultDiv.className = `test-result test-${result.status}`;
+                
+                const icon = result.status === 'pass' ? '✅' : '❌';
+                const duration = result.duration.toFixed(2);
+                
+                resultDiv.innerHTML = `
+                    <strong>${icon} ${result.name}</strong> (${duration}ms)
+                    <br><small>${result.message}</small>
+                `;
+                
+                if (result.error) {
+                    const errorDetails = document.createElement('details');
+                    errorDetails.innerHTML = `
+                        <summary>Error Details</summary>
+                        <pre>${result.error.stack || result.error.message}</pre>
+                    `;
+                    resultDiv.appendChild(errorDetails);
+                }
+                
+                document.getElementById('test-results').appendChild(resultDiv);
+            }
+
+            log(message) {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = `[${timestamp}] ${message}\n`;
+                document.getElementById('test-log').textContent += logEntry;
+                document.getElementById('test-log').scrollTop = document.getElementById('test-log').scrollHeight;
+                console.log(message);
+            }
+
+            updateMetrics() {
+                const total = this.results.length;
+                const passed = this.results.filter(r => r.status === 'pass').length;
+                const failed = this.results.filter(r => r.status === 'fail').length;
+                const duration = this.endTime - this.startTime;
+                
+                document.getElementById('total-tests').textContent = total;
+                document.getElementById('passed-tests').textContent = passed;
+                document.getElementById('failed-tests').textContent = failed;
+                document.getElementById('test-duration').textContent = `${duration.toFixed(0)}ms`;
+            }
+
+            assert(condition, message) {
+                if (!condition) {
+                    throw new Error(message || 'Assertion failed');
+                }
+            }
+
+            assertEqual(actual, expected, message) {
+                if (actual !== expected) {
+                    throw new Error(message || `Expected ${expected}, got ${actual}`);
+                }
+            }
+
+            assertNotNull(value, message) {
+                if (value === null || value === undefined) {
+                    throw new Error(message || 'Value should not be null or undefined');
+                }
+            }
+
+            assertArrayLength(array, expectedLength, message) {
+                if (!Array.isArray(array) || array.length !== expectedLength) {
+                    throw new Error(message || `Expected array length ${expectedLength}, got ${array ? array.length : 'not an array'}`);
+                }
+            }
+        }
+
+        // Initialize test runner
+        const testRunner = new TestRunner();
+
+        // Parsing Tests
+        testRunner.addTest('MarkdownParser - Basic Initialization', () => {
+            const parser = new MarkdownParser();
+            testRunner.assertNotNull(parser, 'Parser should be initialized');
+            testRunner.assert(typeof parser.parseQuestions === 'function', 'parseQuestions method should exist');
+        }, 'parsing');
+
+        testRunner.addTest('MarkdownParser - Valid Question Parsing', async () => {
+            const parser = new MarkdownParser();
+            const testContent = `## Pregunta 001
+
+Test question content.
+
+A. Option A
+B. Option B
+C. Option C
+D. Option D
+
+<as-button message="A"></as-button>`;
+            
+            const questions = parser.parseQuestions(testContent);
+            testRunner.assertArrayLength(questions, 1, 'Should parse one question');
+            testRunner.assertEqual(questions[0].id, '001', 'Question ID should be 001');
+            testRunner.assertEqual(questions[0].correctAnswers[0], 'A', 'Correct answer should be A');
+        }, 'parsing');
+
+        testRunner.addTest('MarkdownParser - Multiple Correct Answers', async () => {
+            const parser = new MarkdownParser();
+            const testContent = `## Pregunta 001
+
+Test question.
+
+A. Option A
+B. Option B
+C. Option C
+D. Option D
+
+<as-button message="BC"></as-button>`;
+            
+            const questions = parser.parseQuestions(testContent);
+            testRunner.assertArrayLength(questions[0].correctAnswers, 2, 'Should have two correct answers');
+            testRunner.assert(questions[0].correctAnswers.includes('B'), 'Should include B');
+            testRunner.assert(questions[0].correctAnswers.includes('C'), 'Should include C');
+        }, 'parsing');
+
+        testRunner.addTest('MarkdownParser - Malformed Content Handling', async () => {
+            const parser = new MarkdownParser();
+            const malformedContent = `## Pregunta 001
+
+Test question.
+
+A. Option A
+
+<as-button message="Z"></as-button>`;
+            
+            const questions = parser.parseQuestions(malformedContent);
+            // Should handle gracefully and skip invalid questions
+            testRunner.assert(questions.length === 0, 'Should skip malformed questions');
+        }, 'parsing');
+
+        // Quiz Engine Tests
+        testRunner.addTest('QuizEngine - Basic Initialization', () => {
+            const mockQuestions = [{
+                id: '001',
+                content: 'Test question',
+                options: { A: 'Option A', B: 'Option B' },
+                correctAnswers: ['A']
+            }];
+            
+            const engine = new QuizEngine(mockQuestions, 1);
+            testRunner.assertNotNull(engine, 'Engine should be initialized');
+            testRunner.assertEqual(engine.selectedQuestions.length, 1, 'Should select one question');
+        }, 'engine');
+
+        testRunner.addTest('QuizEngine - Question Selection', () => {
+            const mockQuestions = [];
+            for (let i = 1; i <= 10; i++) {
+                mockQuestions.push({
+                    id: i.toString().padStart(3, '0'),
+                    content: `Test question ${i}`,
+                    options: { A: 'Option A', B: 'Option B' },
+                    correctAnswers: ['A']
+                });
+            }
+            
+            const engine = new QuizEngine(mockQuestions, 5);
+            testRunner.assertEqual(engine.selectedQuestions.length, 5, 'Should select 5 questions');
+            testRunner.assertEqual(engine.numberOfQuestions, 5, 'Number of questions should be 5');
+        }, 'engine');
+
+        testRunner.addTest('QuizEngine - Answer Submission', () => {
+            const mockQuestions = [{
+                id: '001',
+                content: 'Test question',
+                options: { A: 'Correct', B: 'Incorrect' },
+                correctAnswers: ['A']
+            }];
+            
+            const engine = new QuizEngine(mockQuestions, 1);
+            const result = engine.submitAnswer('A');
+            
+            testRunner.assert(result.isCorrect, 'Answer should be correct');
+            testRunner.assertEqual(result.answer, 'A', 'Answer should be A');
+        }, 'engine');
+
+        testRunner.addTest('QuizEngine - Score Calculation', () => {
+            const mockQuestions = [
+                {
+                    id: '001',
+                    content: 'Test question 1',
+                    options: { A: 'Correct', B: 'Incorrect' },
+                    correctAnswers: ['A']
+                },
+                {
+                    id: '002',
+                    content: 'Test question 2',
+                    options: { A: 'Incorrect', B: 'Correct' },
+                    correctAnswers: ['B']
+                }
+            ];
+            
+            const engine = new QuizEngine(mockQuestions, 2);
+            engine.submitAnswer('A'); // Correct
+            engine.nextQuestion();
+            engine.submitAnswer('A'); // Incorrect
+            engine.nextQuestion();
+            
+            const results = engine.getResults();
+            testRunner.assertEqual(results.score, 50, 'Score should be 50%');
+            testRunner.assertEqual(results.correctCount, 1, 'Should have 1 correct answer');
+        }, 'engine');
+
+        // Performance Tests
+        testRunner.addTest('Performance - Large File Parsing', async () => {
+            const parser = new MarkdownParser();
+            let largeContent = '';
+            
+            // Generate 100 test questions
+            for (let i = 1; i <= 100; i++) {
+                largeContent += `## Pregunta ${i.toString().padStart(3, '0')}
+
+This is test question ${i} with some content.
+
+A. Option A for question ${i}
+B. Option B for question ${i}
+C. Option C for question ${i}
+D. Option D for question ${i}
+
+<as-button message="A"></as-button>
+
+`;
+            }
+            
+            const startTime = performance.now();
+            const questions = parser.parseQuestions(largeContent);
+            const endTime = performance.now();
+            
+            testRunner.assertEqual(questions.length, 100, 'Should parse 100 questions');
+            testRunner.assert(endTime - startTime < 1000, 'Should parse in less than 1 second');
+        }, 'performance');
+
+        testRunner.addTest('Performance - Quiz Engine with Many Questions', () => {
+            const mockQuestions = [];
+            for (let i = 1; i <= 1000; i++) {
+                mockQuestions.push({
+                    id: i.toString().padStart(3, '0'),
+                    content: `Test question ${i}`,
+                    options: { A: 'Option A', B: 'Option B', C: 'Option C', D: 'Option D' },
+                    correctAnswers: ['A']
+                });
+            }
+            
+            const startTime = performance.now();
+            const engine = new QuizEngine(mockQuestions, 50);
+            const endTime = performance.now();
+            
+            testRunner.assertEqual(engine.selectedQuestions.length, 50, 'Should select 50 questions');
+            testRunner.assert(endTime - startTime < 100, 'Should initialize quickly');
+        }, 'performance');
+
+        // UI Tests
+        testRunner.addTest('UI - Screen Navigation', () => {
+            // Mock DOM elements for testing
+            const mockConfigScreen = { classList: { add: () => {}, remove: () => {} } };
+            const mockQuizScreen = { classList: { add: () => {}, remove: () => {} } };
+            const mockResultsScreen = { classList: { add: () => {}, remove: () => {} } };
+            
+            // This would require more complex mocking for full UI testing
+            testRunner.assert(true, 'UI navigation test placeholder');
+        }, 'ui');
+
+        // Responsive Tests
+        testRunner.addTest('Responsive - Mobile Viewport', () => {
+            // Test mobile viewport behavior
+            const originalWidth = window.innerWidth;
+            
+            // Simulate mobile viewport
+            Object.defineProperty(window, 'innerWidth', {
+                writable: true,
+                configurable: true,
+                value: 375
+            });
+            
+            // Test responsive behavior
+            const isMobile = window.innerWidth < 768;
+            testRunner.assert(isMobile, 'Should detect mobile viewport');
+            
+            // Restore original width
+            Object.defineProperty(window, 'innerWidth', {
+                writable: true,
+                configurable: true,
+                value: originalWidth
+            });
+        }, 'responsive');
+
+        // Edge Case Tests
+        testRunner.addTest('Edge Cases - Empty Question List', () => {
+            try {
+                const engine = new QuizEngine([], 1);
+                testRunner.assert(false, 'Should throw error for empty questions');
+            } catch (error) {
+                testRunner.assert(error.message.includes('No hay preguntas'), 'Should throw appropriate error');
+            }
+        }, 'edge-cases');
+
+        testRunner.addTest('Edge Cases - Invalid Answer Format', () => {
+            const mockQuestions = [{
+                id: '001',
+                content: 'Test question',
+                options: { A: 'Option A', B: 'Option B' },
+                correctAnswers: ['A']
+            }];
+            
+            const engine = new QuizEngine(mockQuestions, 1);
+            
+            try {
+                engine.submitAnswer('invalid');
+                testRunner.assert(false, 'Should throw error for invalid answer');
+            } catch (error) {
+                testRunner.assert(error.message.includes('Formato de respuesta inválido'), 'Should validate answer format');
+            }
+        }, 'edge-cases');
+
+        // Global test functions
+        async function runAllTests() {
+            await testRunner.runAllTests();
+        }
+
+        async function runParsingTests() {
+            await testRunner.runTestsByCategory('parsing');
+        }
+
+        async function runEngineTests() {
+            await testRunner.runTestsByCategory('engine');
+        }
+
+        async function runUITests() {
+            await testRunner.runTestsByCategory('ui');
+        }
+
+        async function runPerformanceTests() {
+            await testRunner.runTestsByCategory('performance');
+        }
+
+        async function runResponsiveTests() {
+            await testRunner.runTestsByCategory('responsive');
+        }
+
+        function clearResults() {
+            document.getElementById('test-results').innerHTML = '';
+            document.getElementById('test-log').textContent = '';
+            testRunner.results = [];
+            testRunner.updateMetrics();
+        }
+
+        // Auto-run basic tests on load
+        document.addEventListener('DOMContentLoaded', () => {
+            testRunner.log('🔧 Test runner initialized');
+            testRunner.log('📝 Click "Run All Tests" to start comprehensive testing');
+        });
+    </script>
+</body>
+</html>

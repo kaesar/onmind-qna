@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Questions aNd Answers (QNA) - Trivia Interactivo</title>
+    <meta name="description" content="Aplicación de quiz interactivo basada en archivos Markdown">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-text">
+                    <h1>Questions aNd Answers (QNA)</h1>
+                    <p>Trivia interactivo basado en contenido Markdown</p>
+                </div>
+                <div class="theme-toggle">
+                    <button onclick="toggleTheme()" class="theme-btn" id="theme-btn">🌙</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Pantalla de Configuración -->
+        <main id="config-screen" class="screen active">
+            <section class="config-section">
+                <h2>Configuración del Quiz</h2>
+                <p>Personaliza tu experiencia de quiz antes de comenzar.</p>
+                
+                <div class="config-section">
+                    <label for="question-count">Número de preguntas:</label>
+                    <input 
+                        type="number" 
+                        id="question-count" 
+                        min="1" 
+                        max="100" 
+                        value="10"
+                        aria-describedby="question-count-help"
+                    >
+                    <small id="question-count-help">Selecciona entre 1 y el total de preguntas disponibles</small>
+                    <small id="config-save-status" class="config-save-status hidden">Configuración guardada ✓</small>
+                </div>
+
+                <div class="config-section">
+                    <label for="file-status">Estado del archivo:</label>
+                    <div id="file-status" class="loading">
+                        <div class="loading-spinner"></div>
+                        <p>Cargando archivo Quiz.md...</p>
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    <button id="start-quiz-btn" class="btn" disabled>
+                        Iniciar Quiz
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Pantalla de Quiz -->
+        <main id="quiz-screen" class="screen">
+            <!-- Barra de progreso -->
+            <div class="progress-bar">
+                <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+            </div>
+
+            <!-- Contenedor de pregunta -->
+            <section class="question-container">
+                <div class="question-header">
+                    <span id="question-number" class="question-number">Pregunta 1</span>
+                    <span id="progress-text" class="progress-text">1 de 10</span>
+                </div>
+
+                <h2 id="question-title" class="question-title">
+                    Título de la pregunta
+                </h2>
+
+                <div id="question-content" class="question-content">
+                    Contenido de la pregunta aparecerá aquí...
+                </div>
+
+                <!-- Opciones de respuesta -->
+                <div id="options-container" class="options-container">
+                    <button class="option" data-option="A">
+                        <span class="option-letter">A.</span>
+                        <span class="option-text">Opción A</span>
+                    </button>
+                    <button class="option" data-option="B">
+                        <span class="option-letter">B.</span>
+                        <span class="option-text">Opción B</span>
+                    </button>
+                    <button class="option" data-option="C">
+                        <span class="option-letter">C.</span>
+                        <span class="option-text">Opción C</span>
+                    </button>
+                    <button class="option" data-option="D">
+                        <span class="option-letter">D.</span>
+                        <span class="option-text">Opción D</span>
+                    </button>
+                </div>
+
+                <!-- Controles de navegación -->
+                <div class="text-center">
+                    <button id="next-question-btn" class="btn" disabled>
+                        Siguiente Pregunta
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Pantalla de Resultados -->
+        <main id="results-screen" class="screen">
+            <section class="results-summary">
+                <h2>¡Quiz Completado!</h2>
+                <div id="score-display" class="score-display">85%</div>
+                <p id="score-text" class="score-text">8 de 10 respuestas correctas</p>
+            </section>
+
+            <section class="results-details">
+                <h3>Detalle de Respuestas</h3>
+                <div id="results-list">
+                    <!-- Los resultados se generarán dinámicamente -->
+                </div>
+            </section>
+
+            <div class="text-center">
+                <button id="new-quiz-btn" class="btn">
+                    Nuevo Quiz
+                </button>
+                <button id="back-config-btn" class="btn btn-secondary">
+                    Configuración
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts - Load components first, then main app -->
+    <script src="js/theme-toggle.js"></script>
+    <script src="js/file-handler.js"></script>
+    <script src="js/markdown-parser.js"></script>
+    <script src="js/quiz-engine.js"></script>
+    <script src="js/ui-controller.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
