@@ -19,7 +19,8 @@ This application allows creating interactive quizzes from the `Quiz.md` file, au
 ## Project Structure
 
 ```
-quiz-markdown/
+  ______
+./ qna /
 ├── index.html              # Main page
 ├── css/
 │   └── styles.css          # Application styles
@@ -69,9 +70,37 @@ bunx http-server -p 8000
 php -S localhost:8000
 ```
 
+### Docker (Recommended for production)
+
+The application is containerized using Docker for easy deployment. The container uses Nginx to serve the static files with optimized performance and security settings. To buid consider next sentences:
+
+```bash
+docker build -t onmind-qna:latest .
+docker run -d -p 8080:80 --name onmind-qna onmind-qna:latest
+```
+
+To use a custom `Quiz.md` file without rebuilding the container, mount it as a volume:
+
+```bash
+docker run -d -p 8080:80 \
+  -v $(pwd)/Quiz.md:/usr/share/nginx/html/Quiz.md:ro \
+  --name onmind-qna \
+  onmind-qna:latest
+```
+
+Or using a different quiz file:
+```bash
+docker run -d -p 8080:80 \
+  -v $(pwd)/Trivia.md:/usr/share/nginx/html/Quiz.md:ro \
+  --name onmind-qna \
+  onmind-qna:latest
+```
+
+> **Note:** The container expects the file to be named `Quiz.md` at the path `/usr/share/nginx/html/Quiz.md`. The volume mount replaces the default file with your custom file. The `:ro` flag makes it read-only for security.
+
 ### Open OnMind-QNA web application
 
-Just open a browser and use the address: `http://localhost:8000`
+Just open a browser and use the address: `http://localhost:8080`
 
 ## Application Usage
 
