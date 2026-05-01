@@ -128,8 +128,6 @@ class UIController {
             case 'quiz':
                 this.quizScreen?.classList.add('active');
                 this.currentScreen = 'quiz';
-                // Reset option animations
-                this.resetOptionAnimations();
                 break;
             case 'results':
                 this.resultsScreen?.classList.add('active');
@@ -283,6 +281,8 @@ class UIController {
         setTimeout(() => {
             // Update options with staggered animation
             this.displayOptions(question.options, question.correctAnswers);
+            // Apply animations to newly created options
+            this.resetOptionAnimations();
         }, 300);
         
         // Update progress bar with smooth animation
@@ -319,40 +319,30 @@ class UIController {
 
     displayOptions(options, correctAnswers = []) {
         if (!this.optionsContainer || !options) return;
-        
+
         // Determine if this is a multiple selection question
         this.isMultipleSelection = correctAnswers.length > 1;
-        
-        // Clear previous selections
-        const optionButtons = this.optionsContainer.querySelectorAll('.option');
-        optionButtons.forEach(btn => btn.classList.remove('selected'));
-        
-        // Update option texts and selection mode
+
+        // Clear existing options
+        this.optionsContainer.innerHTML = '';
+
+        // Create option buttons dynamically for all available options
         Object.entries(options).forEach(([letter, text]) => {
-            const optionButton = this.optionsContainer.querySelector(`[data-option="${letter}"]`);
-            if (optionButton) {
-                const textSpan = optionButton.querySelector('.option-text');
-                if (textSpan) {
-                    textSpan.textContent = text;
-                }
-                optionButton.style.display = 'block';
-                
-                // Add visual indicator for multiple selection
-                if (this.isMultipleSelection) {
-                    optionButton.classList.add('multiple-selection');
-                } else {
-                    optionButton.classList.remove('multiple-selection');
-                }
+            const optionButton = document.createElement('button');
+            optionButton.className = 'option';
+            optionButton.setAttribute('data-option', letter);
+
+            // Add visual indicator for multiple selection
+            if (this.isMultipleSelection) {
+                optionButton.classList.add('multiple-selection');
             }
-        });
-        
-        // Hide unused options
-        const allOptions = this.optionsContainer.querySelectorAll('.option');
-        allOptions.forEach(btn => {
-            const letter = btn.dataset.option;
-            if (!options[letter]) {
-                btn.style.display = 'none';
-            }
+
+            optionButton.innerHTML = `
+                <span class="option-letter">${letter}.</span>
+                <span class="option-text">${text}</span>
+            `;
+
+            this.optionsContainer.appendChild(optionButton);
         });
     }
 

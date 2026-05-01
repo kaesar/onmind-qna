@@ -3,7 +3,7 @@
 class MarkdownParser {
     constructor() {
         // Regex para identificar bloques de preguntas usando subtítulos ##
-        this.questionBlockRegex = /## Pregunta \d+\n\n([\s\S]*?)(?=## Pregunta|\n---|\n#|$)/g;
+        this.questionBlockRegex = /## (?:Pregunta|Question) \d+\n\n([\s\S]*?)(?=## (?:Pregunta|Question)|\n---|\n#|$)/g;
         
         // Regex para extraer opciones de respuesta A, B, C, D, E, F, etc. (maneja formatos: A., **A**., **A**, A)
         this.optionRegex = /^(?:\*\*)?([A-Z])(?:\*\*)?\.*\s+(.+)$/gm;
@@ -15,7 +15,7 @@ class MarkdownParser {
         this.inquireAnswerRegex = /<as-button[^>]*inquire="([^"]+)"[^>]*>/;
         
         // Regex para extraer el número de pregunta
-        this.questionNumberRegex = /## Pregunta (\d+)/;
+        this.questionNumberRegex = /## (Pregunta|Question) (\d+)/;
         
         // Logging and validation configuration
         this.enableDetailedLogging = true;
@@ -111,31 +111,32 @@ class MarkdownParser {
             if (!numberMatch) {
                 throw new Error('No se pudo extraer el número de pregunta del bloque');
             }
-            
-            const questionNumber = numberMatch[1];
-            this.log('debug', `Número de pregunta extraído: ${questionNumber}`);
-            
+
+            const questionWord = numberMatch[1];
+            const questionNumber = numberMatch[2];
+            this.log('debug', `Número de pregunta extraído: ${questionNumber} (${questionWord})`);
+
             // Extraer el enunciado (texto entre el título y las opciones)
             const questionContent = this.extractQuestionContent(questionBlock);
             if (!questionContent) {
                 throw new Error('No se pudo extraer el contenido de la pregunta');
             }
-            
+
             // Extraer opciones de respuesta
             const options = this.extractAnswers(questionBlock);
             if (!options || Object.keys(options).length === 0) {
                 throw new Error('No se pudieron extraer las opciones de respuesta');
             }
-            
+
             // Extraer respuestas correctas
             const correctAnswers = this.extractCorrectAnswer(questionBlock);
             if (!correctAnswers || correctAnswers.length === 0) {
                 throw new Error('No se pudieron extraer las respuestas correctas');
             }
-            
+
             const questionData = {
                 id: questionNumber.padStart(3, '0'),
-                title: `Pregunta ${questionNumber}`,
+                title: `${questionWord} ${questionNumber}`,
                 content: questionContent,
                 options: options,
                 correctAnswers: correctAnswers,
@@ -235,7 +236,7 @@ class MarkdownParser {
             const lines = questionBlock.split('\n');
             let questionContent = '';
             
-            // Empezar después del título (## Pregunta XXX) y línea vacía
+            // Empezar después del título (## Question/Pregunta XXX) y línea vacía
             for (let i = 2; i < lines.length; i++) {
                 const line = lines[i];
                 

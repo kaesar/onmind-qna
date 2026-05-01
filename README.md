@@ -79,6 +79,8 @@ docker build -t onmind-qna:latest .
 docker run -d -p 8080:80 --name onmind-qna onmind-qna:latest
 ```
 
+> For **Linux**, it's possible check file priviledge with command: `chmod 775 Quiz.md`
+
 To use a custom `Quiz.md` file without rebuilding the container, mount it as a volume:
 
 ```bash
@@ -89,6 +91,7 @@ docker run -d -p 8080:80 \
 ```
 
 Or using a different quiz file:
+
 ```bash
 docker run -d -p 8080:80 \
   -v $(pwd)/Trivia.md:/usr/share/nginx/html/Quiz.md:ro \
@@ -151,14 +154,14 @@ integration-test.html      # E2E integration tests
 
 ## Development
 
-This project is implemented in vanilla **JavaScript** without external dependencies. It uses the following technologies:
+This project is implemented in vanilla **JavaScript** without external dependencies. It considers the following technologies and aspects:
 
-- **Frontend**: Semantic HTML5, CSS3 with responsive design
-- **JavaScript**: ES6+ with native modules
-- **APIs**: File API for local file reading
-- **Parsing**: Optimized regular expressions
-- **Testing**: Complete automated test suite
-- **Performance**: Real-time monitoring and optimization
+- Semantic HTML5, CSS3 with responsive design
+- JavaScript / ES6+ with native modules
+- File API for local file reading
+- Optimized regular expressions for parsing
+- Complete automated test suite
+- Monitoring and optimization way
 
 ### Architecture
 
@@ -187,7 +190,7 @@ This project is implemented in vanilla **JavaScript** without external dependenc
 - Safari 12+
 - Edge 79+
 
-## 📱 Responsive Features
+## Responsive Features
 
 - **Mobile**: ≤ 768px - Touch-optimized interface
 - **Tablet**: 769px - 1024px - Hybrid design
