@@ -14,7 +14,7 @@ class FileHandler {
             maxFileSize: 10 * 1024 * 1024, // 10MB
             minFileSize: 100, // 100 bytes
             requiredPatterns: [
-                /##\s+Pregunta\s+\d+/i, // Question headers
+                /##\s+(Pregunta|Question)\s+\d+/i, // Question headers
                 /<as-button[^>]*message="[^"]*"[^>]*>/i, // Answer buttons
                 /^\s*\*?\*?[A-D]\*?\*?\.\s+.+$/m // Answer options
             ]
@@ -280,7 +280,7 @@ class FileHandler {
         // Check for questions
         const questionPattern = patternResults[0];
         if (!questionPattern.found) {
-            throw new Error('Formato inválido: no se encontraron preguntas en el formato esperado (## Pregunta XXX)');
+            throw new Error('Formato inválido: no se encontraron preguntas en el formato esperado (## Pregunta XXX / ## Question XXX)');
         }
         
         // Check for answer buttons
@@ -319,7 +319,7 @@ class FileHandler {
         
         // Check for inconsistent question numbering
         const questionNumbers = [];
-        const questionMatches = content.match(/## Pregunta (\d+)/g);
+        const questionMatches = content.match(/## (Pregunta|Question) (\d+)/g);
         if (questionMatches) {
             for (const match of questionMatches) {
                 const number = parseInt(match.match(/\d+/)[0]);
