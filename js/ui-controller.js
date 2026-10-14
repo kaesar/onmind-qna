@@ -33,6 +33,7 @@ class UIController {
         this.resultsList = document.getElementById('results-list');
         this.newQuizBtn = document.getElementById('new-quiz-btn');
         this.backConfigBtn = document.getElementById('back-config-btn');
+        this.reviewFailedBtn = document.getElementById('review-failed-btn');
         
         // State
         this.currentScreen = 'config';
@@ -76,6 +77,10 @@ class UIController {
         
         if (this.backConfigBtn) {
             this.backConfigBtn.addEventListener('click', () => this.onBackToConfig());
+        }
+
+        if (this.reviewFailedBtn) {
+            this.reviewFailedBtn.addEventListener('click', () => this.onReviewFailed());
         }
         
         // Option selection events (delegated)
@@ -362,6 +367,18 @@ class UIController {
         
         // Show results screen first
         this.showScreen('results');
+
+        // Toggle review-failed button: only if there are failures
+        if (this.reviewFailedBtn) {
+            const failedCount = results.details
+                ? results.details.filter(d => !d.isCorrect).length
+                : (results.totalQuestions - results.correctCount);
+            this.reviewFailedBtn.style.display = failedCount > 0 ? '' : 'none';
+            this.reviewFailedBtn.textContent = failedCount > 0
+                ? `Repasar (${failedCount})`
+                : 'Repasar';
+            this.reviewFailedBtn.disabled = failedCount === 0;
+        }
         
         // Animate score display with counting effect
         setTimeout(() => {
@@ -826,6 +843,11 @@ class UIController {
     onNewQuiz() {
         // Dispatch custom event for new quiz
         const event = new CustomEvent('newQuiz');
+        document.dispatchEvent(event);
+    }
+
+    onReviewFailed() {
+        const event = new CustomEvent('reviewFailed');
         document.dispatchEvent(event);
     }
 

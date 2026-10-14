@@ -22,6 +22,7 @@ class QuizApp {
         this.handleStartQuiz = this.handleStartQuiz.bind(this);
         this.handleAnswerSubmitted = this.handleAnswerSubmitted.bind(this);
         this.handleNewQuiz = this.handleNewQuiz.bind(this);
+        this.handleReviewFailed = this.handleReviewFailed.bind(this);
     }
 
     /**
@@ -62,6 +63,7 @@ class QuizApp {
         document.addEventListener('startQuiz', this.handleStartQuiz);
         document.addEventListener('answerSubmitted', this.handleAnswerSubmitted);
         document.addEventListener('newQuiz', this.handleNewQuiz);
+        document.addEventListener('reviewFailed', this.handleReviewFailed);
         document.addEventListener('loadQuestions', this.handleLoadQuestions.bind(this));
         
         // Handle page visibility changes to save state
@@ -443,19 +445,51 @@ class QuizApp {
     handleNewQuiz(event) {
         try {
             console.log('Iniciando nuevo quiz');
-            
-            // Reset quiz engine if it exists
-            if (this.quizEngine) {
+
+            // Reconstruir siempre desde el pool completo (this.questions):
+            // tras un Repaso, quizEngine.allQuestions queda recortado a las falladas.
+            if (this.questions && this.questions.length > 0) {
+                const count = this.uiController
+                    ? this.uiController.getQuestionCount()
+                    : this.questions.length;
+                this.quizEngine = new QuizEngine(this.questions, count);
+                this.displayCurrentQuestion();
+            } else if (this.quizEngine) {
                 this.quizEngine.startNewQuiz();
                 this.displayCurrentQuestion();
             } else {
                 // Return to configuration screen
                 this.uiController.showConfiguration();
             }
-            
+
         } catch (error) {
             console.error('Error al iniciar nuevo quiz:', error);
             this.uiController.showError(`Error al iniciar nuevo quiz: ${error.message}`);
+        }
+    }
+
+    handleReviewFailed() {
+        try {
+            if (!this.quizEngine) throw new Error('Quiz engine no está inicializado');
+
+            const failedQuestions = this.quizEngine.selectedQuestions.filter(
+                (_, i) => {
+                    const ans = this.quizEngine.userAnswers[i];
+                    return !ans || !this.quizEngine.isAnswerCorrect(i, ans);
+                }
+            );
+
+            if (failedQuestions.length === 0) {
+                this.uiController.showError('Sin falladas para repasar.');
+                return;
+            }
+
+            console.log(`Repasando ${failedQuestions.length} falladas`);
+            this.quizEngine = new QuizEngine(failedQuestions, failedQuestions.length);
+            this.displayCurrentQuestion();
+        } catch (error) {
+            console.error('Error al repasar falladas:', error);
+            this.uiController.showError(`Error al repasar falladas: ${error.message}`);
         }
     }
 

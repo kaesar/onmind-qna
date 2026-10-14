@@ -1132,6 +1132,31 @@ body.dark-theme .result-question {
     color: #f5f5dc !important;
 }
 
+/* Detalle de resultados (estilos inyectados por ui-controller.js) */
+body.dark-theme .question-text {
+    color: #f5f5dc;
+}
+
+body.dark-theme .answer-label {
+    color: #bbb;
+}
+
+body.dark-theme .answer-value.correct {
+    color: #7bed9f;
+}
+
+body.dark-theme .answer-value.incorrect {
+    color: #ff8a80;
+}
+
+body.dark-theme .correct-answer {
+    background: rgba(39, 174, 96, 0.2);
+}
+
+body.dark-theme .correct-answer .answer-value {
+    color: #7bed9f;
+}
+
 body.dark-theme .header h1 {
     color: #f5f5dc;
 }

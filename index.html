@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Questions aNd Answers (QNA) - Trivia/Quiz Interactivo</title>
     <meta name="description" content="Aplicación de quiz interactivo basada en archivos Markdown">
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/styles.css?v=202610">
 </head>
 <body>
     <div class="container">
@@ -140,7 +140,10 @@
             </section>
 
             <div class="text-center">
-                <button id="new-quiz-btn" class="btn">
+                <button id="review-failed-btn" type="button" class="btn">
+                    Repasar
+                </button>
+                <button id="new-quiz-btn" class="btn btn-secondary">
                     Nuevo Quiz
                 </button>
                 <button id="back-config-btn" class="btn btn-secondary">
@@ -179,12 +182,12 @@
         }
     </style>
 
-    <!-- Scripts - Load components first, then main app -->
-    <script src="js/theme-toggle.js"></script>
-    <script src="js/file-handler.js"></script>
-    <script src="js/markdown-parser.js"></script>
-    <script src="js/quiz-engine.js"></script>
-    <script src="js/ui-controller.js"></script>
-    <script src="js/app.js"></script>
+    <!-- Scripts - Load components first, then main app (?v= forces fresh JS after deploys) -->
+    <script src="js/theme-toggle.js?v=20261014"></script>
+    <script src="js/file-handler.js?v=20261014"></script>
+    <script src="js/markdown-parser.js?v=20261014"></script>
+    <script src="js/quiz-engine.js?v=20261014"></script>
+    <script src="js/ui-controller.js?v=20261014"></script>
+    <script src="js/app.js?v=20261014"></script>
 </body>
 </html>
