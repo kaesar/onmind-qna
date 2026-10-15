@@ -1,20 +1,44 @@
 # Questions aNd Answers (OnMind-QNA)
 
-Interactive and simple web application that uses Markdown files as content database for quiz or trivia.
+> Simple WebApp that uses Markdown files as content database for quiz or trivia.
 
-## Description
+**OnMind-QNA** is a Web Application that allows creating interactive quizzes from the `Quiz.md` file, automatically extracting questions and answers and presenting a random quiz to the user. So, you can practice topics or prepare simulation tests. In functional terms, you can get:
 
-This application allows creating interactive quizzes from the `Quiz.md` file, automatically extracting questions and answers and presenting a random quiz to the user.
-
-## Features
-
-- Responsive web interface
 - Automatic question extraction from Markdown
 - Random question selection
 - Configurable question file (`Quiz.md` by default)
 - Configurable number of questions (10 by default)
 - Detailed scoring and results
 - Multiple answer support
+
+## Question File Format
+
+A quiz is a Markdown file (e.g. `Quiz.md`). Each question follows this structure:
+
+```markdown
+## Pregunta 001
+
+Question text here (statements may span several lines).
+
+A. First option
+B. Second option
+C. Third option
+D. Fourth option
+
+<as-button message="B"></as-button>
+```
+
+- **Questions** start with `## Pregunta NNN` (or `## Question NNN`). The title may go on the same line: `## Pregunta 1. Question text?`.
+- **Options** start with a capital letter followed by a dot (`A.` … `H.`), one per line, at least two per question. Bold is optional.
+- **Answers** can be declared in 3 modalities (first match wins, evaluated in this order):
+
+  1. `<as-button message="B">` — primary. Supports multiple answers (`message="AB"`) and extra doubt flags (`inquire="C"`). This tag is kept for compatibility with the [**OnMind-CUI**](https://github.com/kaesar/onmind-cui) library and the [**OnMind-PUB**](https://github.com/kaesar/onmind-pub) blog manager: the same file can be published as an article, and that article can also feed the quiz in **OnMind-QNA**.
+  2. `<!-- R: B -->` — single-line HTML comment fallback. Invisible when the Markdown is rendered.
+  3. `> R: B` — legacy blockquote fallback.
+
+  Multiple answers are written as `AB` or `A, C`.
+
+- Questions with formatting errors (missing options, unknown answer, too-short content) are skipped at load and can be reviewed with the **Ver omitidas** button on the configuration screen.
 
 ## Project Structure
 
@@ -108,7 +132,9 @@ Just open a browser and use the address: `http://localhost:8080`
 ## Application Usage
 
 1. **Configure**: 
-   - Set the question file name (default: `Quiz.md`)
+   - Pick a quiz from the catalog dropdown (`quizzes.json`) or type a local path / URL (S3 included)
+   - Each catalog entry may suggest a default question count via `"questions"` (applied to the count input, clamped to available)
+   - Deep link with `?quiz=` (e.g. `index.html?quiz=Trivia-SAA.md` or `?quiz=https://bucket.s3.amazonaws.com/Quiz.md`)
    - Select the desired number of questions (1-50)
 2. **Start**: Click "Start Quiz"
 3. **Answer**: Select an option for each question
@@ -116,7 +142,30 @@ Just open a browser and use the address: `http://localhost:8080`
 5. **Results**: Review your score and detailed answers
 6. **Repeat**: Start a new quiz with different questions
 
-## Testing and Development
+## Development
+
+This project is implemented in vanilla **JavaScript** without external dependencies. It considers the following technologies and aspects:
+
+- Classic HTML5, CSS3 with responsive design
+- JavaScript / ES6+ with native modules
+- File API for local file reading
+- Optimized regular expressions for parsing
+- Complete automated test suite
+- Monitoring and optimization way
+
+### Code Structure
+
+The main **javascript** files are the following:
+
+- `app.js` - Main orchestrator and event handling
+- `markdown-parser.js` - Question extraction and validation
+- `quiz-engine.js` - Quiz logic and scoring
+- `ui-controller.js` - Interface management and navigation
+- `file-handler.js` - File loading and validation
+- `performance-monitor.js` - Performance monitoring
+- `responsive-tester.js` - Responsiveness testing
+
+## Testing
 
 ### Running Tests
 
@@ -136,43 +185,19 @@ open integration-test.html
 # or navigate to http://localhost:8000/integration-test.html
 ```
 
-### Development Tools
-
-- **Performance Monitor**: Real-time performance monitoring
-- **Responsive Tester**: Automated responsiveness testing
-- **Error Handling**: Robust error handling and edge cases
-- **Test Data**: Test files in `test-data/`
-
 ### Testing Structure
+
+Test files are in `test-data/` and there is a test suite:
+
 ```
 test-data/
 ├── test-questions.md       # Test questions
 ├── malformed-questions.md  # Edge cases and errors
-test-runner.html           # Automated test suite
-integration-test.html      # E2E integration tests
+test-runner.html            # Automated test suite
+integration-test.html       # E2E integration tests
 ```
 
-## Development
-
-This project is implemented in vanilla **JavaScript** without external dependencies. It considers the following technologies and aspects:
-
-- Semantic HTML5, CSS3 with responsive design
-- JavaScript / ES6+ with native modules
-- File API for local file reading
-- Optimized regular expressions for parsing
-- Complete automated test suite
-- Monitoring and optimization way
-
-### Architecture
-
-- `app.js` - Main orchestrator and event handling
-- `markdown-parser.js` - Question extraction and validation
-- `quiz-engine.js` - Quiz logic and scoring
-- `ui-controller.js` - Interface management and navigation
-- `file-handler.js` - File loading and validation
-- `performance-monitor.js` - Performance monitoring
-- `responsive-tester.js` - Responsiveness testing
-
+<!--
 ## Requirements
 
 ### Minimum
@@ -189,13 +214,7 @@ This project is implemented in vanilla **JavaScript** without external dependenc
 - Firefox 55+
 - Safari 12+
 - Edge 79+
-
-## Responsive Features
-
-- **Mobile**: ≤ 768px - Touch-optimized interface
-- **Tablet**: 769px - 1024px - Hybrid design
-- **Desktop**: > 1024px - Complete experience
-
+-->
 ## Troubleshooting
 
 ### Error: "Cannot load file"
@@ -217,6 +236,12 @@ This project is implemented in vanilla **JavaScript** without external dependenc
   <as-button message="A"></as-button>
   ```
 - Verify the correct filename is configured in the application
+
+### Error: answer not identified / questions skipped ("Ver omitidas")
+- Each question needs an answer marker in one of the 3 modalities: `<as-button message="B">`, `<!-- R: B -->`, or `> R: B`. Without any of them the question is skipped.
+- Check that the answer letter exists among the options (e.g. `message="E"` with only A–D is skipped).
+- For multiple answers use `AB` or `A, C` (no other separators).
+- Click **Ver omitidas** on the configuration screen to see exactly which questions were skipped and why.
 
 ### Performance Issues
 - Open `integration-test.html` for diagnostics

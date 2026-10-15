@@ -1,0 +1,10 @@
+{
+  "default": "./Quiz.md",
+  "quizzes": [
+    { "label": "Quiz", "path": "./Quiz.md", "questions": 5 },
+    { "label": "Trivia RPA", "path": "./Trivia-RPA.md", "questions": 5 },
+    { "label": "Trivia SAA", "path": "./Trivia-SAA.md", "questions": 10 },
+    { "label": "Trivia DEA", "path": "./Trivia-DEA.md", "questions": 10 },
+    { "label": "Trivia DVA", "path": "./Trivia-DVA.md", "questions": 10 }
+  ]
+}

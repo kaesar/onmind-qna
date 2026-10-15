@@ -11,6 +11,7 @@ class UIController {
         
         // Configuration elements
         this.quizFilenameInput = document.getElementById('quiz-filename');
+        this.quizSelect = document.getElementById('quiz-select');
         this.loadQuestionsBtn = document.getElementById('load-questions-btn');
         this.questionCountInput = document.getElementById('question-count');
         this.fileStatusDiv = document.getElementById('file-status');
@@ -34,6 +35,13 @@ class UIController {
         this.newQuizBtn = document.getElementById('new-quiz-btn');
         this.backConfigBtn = document.getElementById('back-config-btn');
         this.reviewFailedBtn = document.getElementById('review-failed-btn');
+        this.viewSkippedBtn = document.getElementById('view-skipped-btn');
+        this.skippedScreen = document.getElementById('skipped-screen');
+        this.skippedList = document.getElementById('skipped-list');
+        this.backSkippedBtn = document.getElementById('back-skipped-btn');
+        this.backSkippedTopBtn = document.getElementById('back-skipped-top-btn');
+        this.lastSkippedLogs = null;
+        this.lastSkippedCount = 0;
         
         // State
         this.currentScreen = 'config';
@@ -60,6 +68,10 @@ class UIController {
         if (this.quizFilenameInput) {
             this.quizFilenameInput.addEventListener('input', () => this.onFilenameChange());
         }
+
+        if (this.quizSelect) {
+            this.quizSelect.addEventListener('change', () => this.onQuizSelectChange());
+        }
         
         if (this.questionCountInput) {
             this.questionCountInput.addEventListener('input', () => this.onQuestionCountChange());
@@ -81,6 +93,18 @@ class UIController {
 
         if (this.reviewFailedBtn) {
             this.reviewFailedBtn.addEventListener('click', () => this.onReviewFailed());
+        }
+
+        if (this.viewSkippedBtn) {
+            this.viewSkippedBtn.addEventListener('click', () => this.onViewSkipped());
+        }
+
+        if (this.backSkippedBtn) {
+            this.backSkippedBtn.addEventListener('click', () => this.showScreen('config'));
+        }
+
+        if (this.backSkippedTopBtn) {
+            this.backSkippedTopBtn.addEventListener('click', () => this.showScreen('config'));
         }
         
         // Option selection events (delegated)
@@ -114,6 +138,7 @@ class UIController {
                 this.configScreen?.classList.remove('active', 'fade-out');
                 this.quizScreen?.classList.remove('active', 'fade-out');
                 this.resultsScreen?.classList.remove('active', 'fade-out');
+                this.skippedScreen?.classList.remove('active', 'fade-out');
                 
                 // Show requested screen with animation
                 this.activateScreen(screenName);
@@ -137,6 +162,10 @@ class UIController {
             case 'results':
                 this.resultsScreen?.classList.add('active');
                 this.currentScreen = 'results';
+                break;
+            case 'skipped':
+                this.skippedScreen?.classList.add('active');
+                this.currentScreen = 'skipped';
                 break;
             default:
                 console.error('Unknown screen:', screenName);
@@ -173,6 +202,7 @@ class UIController {
                     <p>${message}</p>
                 `;
                 this.startQuizBtn.disabled = true;
+                if (this.viewSkippedBtn) this.viewSkippedBtn.style.display = 'none';
                 break;
                 
             case 'success':
@@ -199,6 +229,71 @@ class UIController {
                 this.startQuizBtn.disabled = true;
                 break;
         }
+    }
+
+    setSkippedLog(logs, count) {
+        this.lastSkippedLogs = logs || null;
+        this.lastSkippedCount = count || 0;
+
+        if (this.viewSkippedBtn) {
+            this.viewSkippedBtn.style.display = this.lastSkippedCount > 0 ? '' : 'none';
+            this.viewSkippedBtn.textContent = this.lastSkippedCount > 0
+                ? `Ver omitidas (${this.lastSkippedCount})`
+                : 'Ver omitidas';
+        }
+    }
+
+    displaySkipped(logs = null) {
+        const data = logs || this.lastSkippedLogs;
+        this.showScreen('skipped');
+        if (!this.skippedList) return;
+
+        this.skippedList.innerHTML = '';
+
+        const items = [];
+        const warnings = data?.warnings || [];
+        const errors = data?.errors || [];
+        warnings.forEach(w => {
+            if (w.message && /omitida/i.test(w.message)) items.push(w);
+        });
+        errors.forEach(e => {
+            if (e.message && /procesar pregunta|extrac/i.test(e.message)) items.push(e);
+        });
+
+        if (items.length === 0) {
+            this.skippedList.innerHTML = '<p>No hay detalle de descartadas para esta carga.</p>';
+            if (this.backSkippedTopBtn) this.backSkippedTopBtn.style.display = 'none';
+            return;
+        }
+
+        if (this.backSkippedTopBtn) {
+            this.backSkippedTopBtn.style.display = items.length > 5 ? '' : 'none';
+        }
+
+        items.forEach((item, index) => {
+            const entry = document.createElement('div');
+            entry.className = 'result-item incorrect';
+
+            const reasons = (item.data?.errors || [])
+                .map(err => `<li>${this.sanitizeErrorMessage(err.message || err)}</li>`)
+                .join('');
+            const block = item.data?.block || item.data?.blockPreview || '';
+
+            entry.innerHTML = `
+                <div class="result-question">
+                    <span class="question-number-badge">${index + 1}</span>
+                    <span class="question-text">${this.sanitizeErrorMessage(item.message)}</span>
+                </div>
+                ${reasons ? `<ul class="skipped-reasons">${reasons}</ul>` : ''}
+                ${block ? `<pre class="skipped-block">${this.sanitizeErrorMessage(block)}</pre>` : ''}
+            `;
+            this.skippedList.appendChild(entry);
+        });
+    }
+
+    onViewSkipped() {
+        const event = new CustomEvent('viewSkipped');
+        document.dispatchEvent(event);
     }
 
     updateQuestionCountLimits() {
@@ -235,6 +330,70 @@ class UIController {
         
         const filename = this.quizFilenameInput.value.trim();
         return filename || 'Quiz.md';
+    }
+
+    setQuizFilename(filename) {
+        if (this.quizFilenameInput && filename) {
+            this.quizFilenameInput.value = filename;
+        }
+    }
+
+    setQuizCatalog(entries, selectedPath = null) {
+        if (!this.quizSelect) return;
+
+        const norm = (p) => String(p || '').trim().replace(/^\.\//, '');
+        const base = Array.isArray(entries) && entries.length > 0
+            ? entries
+            : [{ label: 'Quiz', path: './Quiz.md' }];
+
+        // No duplicates by normalized path
+        const seen = new Set();
+        const list = base.filter(e => {
+            const k = norm(e.path);
+            if (!k || seen.has(k)) return false;
+            seen.add(k);
+            return true;
+        });
+
+        this.quizSelect.innerHTML = '';
+        list.forEach(entry => {
+            const opt = document.createElement('option');
+            opt.value = entry.path;
+            opt.textContent = entry.label || entry.path;
+            this.quizSelect.appendChild(opt);
+        });
+
+        // Default: first item in the list
+        const current = selectedPath || list[0].path;
+        const hit = list.find(e => norm(e.path) === norm(current));
+        this.quizCatalogEntries = list;
+        if (hit) {
+            this.quizSelect.value = hit.path;
+            this.setQuizFilename(hit.path);
+        } else {
+            const custom = document.createElement('option');
+            custom.value = current;
+            custom.textContent = current;
+            this.quizSelect.appendChild(custom);
+            this.quizSelect.value = current;
+        }
+        this.applyQuizSuggestion(this.quizSelect.value);
+    }
+
+    applyQuizSuggestion(path) {
+        if (!this.questionCountInput || !Array.isArray(this.quizCatalogEntries)) return;
+
+        const norm = (p) => String(p || '').trim().replace(/^\.\//, '');
+        const entry = this.quizCatalogEntries.find(e => norm(e.path) === norm(path));
+        const suggested = parseInt(entry?.questions, 10);
+
+        if (suggested > 0) {
+            let value = Math.max(1, suggested);
+            if (this.totalQuestionsAvailable > 0) {
+                value = Math.min(value, this.totalQuestionsAvailable);
+            }
+            this.questionCountInput.value = value;
+        }
     }
 
     getQuestionCount() {
@@ -420,10 +579,13 @@ class UIController {
                 this.scoreText.textContent = `${results.correctCount} de ${results.totalQuestions} respuestas correctas`;
                 this.scoreText.classList.add('fade-in');
                 
-                // Add encouraging message based on score
+                // Add encouraging message based on score (replace previous)
                 const encouragement = this.getEncouragementMessage(results.score);
+                this.scoreText.parentNode.querySelectorAll('.encouragement-message')
+                    .forEach(el => el.remove());
                 if (encouragement) {
                     const encouragementEl = document.createElement('p');
+                    encouragementEl.className = 'encouragement-message';
                     encouragementEl.textContent = encouragement;
                     encouragementEl.style.cssText = `
                         font-size: 1rem;
@@ -719,6 +881,14 @@ class UIController {
         }, 500); // Save configuration but don't auto-load
     }
 
+    onQuizSelectChange() {
+        if (!this.quizSelect) return;
+        this.setQuizFilename(this.quizSelect.value);
+        this.applyQuizSuggestion(this.quizSelect.value);
+        this.saveConfiguration();
+        this.onLoadQuestions();
+    }
+
     onLoadQuestions() {
         const filename = this.getQuizFilename();
         
@@ -852,7 +1022,7 @@ class UIController {
     }
 
     onBackToConfig() {
-        // Solo cambiar a la pantalla de configuración sin recargar el archivo
+        // Just switch to the configuration screen without reloading the file
         this.showScreen('config');
     }
 

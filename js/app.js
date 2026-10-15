@@ -23,6 +23,7 @@ class QuizApp {
         this.handleAnswerSubmitted = this.handleAnswerSubmitted.bind(this);
         this.handleNewQuiz = this.handleNewQuiz.bind(this);
         this.handleReviewFailed = this.handleReviewFailed.bind(this);
+        this.handleViewSkipped = this.handleViewSkipped.bind(this);
     }
 
     /**
@@ -37,8 +38,9 @@ class QuizApp {
             
             // Set up event listeners
             this.setupEventListeners();
-            
-            // Load and process markdown file with UI filename
+
+            // Load quiz catalog, apply ?quiz= override, then load questions
+            await this.loadQuizCatalog();
             await this.loadQuestions(this.uiController.getQuizFilename());
             
             this.isInitialized = true;
@@ -64,6 +66,7 @@ class QuizApp {
         document.addEventListener('answerSubmitted', this.handleAnswerSubmitted);
         document.addEventListener('newQuiz', this.handleNewQuiz);
         document.addEventListener('reviewFailed', this.handleReviewFailed);
+        document.addEventListener('viewSkipped', this.handleViewSkipped);
         document.addEventListener('loadQuestions', this.handleLoadQuestions.bind(this));
         
         // Handle page visibility changes to save state
@@ -77,6 +80,37 @@ class QuizApp {
         window.addEventListener('beforeunload', () => {
             this.uiController.saveConfiguration();
         });
+    }
+
+    /**
+     * Load quiz catalog (quizzes.json) and apply ?quiz= URL override
+     */
+    async loadQuizCatalog() {
+        let entries = [{ label: 'Quiz', path: './Quiz.md' }];
+
+        try {
+            const response = await fetch('quizzes.json');
+            if (response.ok) {
+                const catalog = await response.json();
+                if (Array.isArray(catalog)) {
+                    entries = catalog;
+                } else if (catalog && Array.isArray(catalog.quizzes)) {
+                    entries = catalog.quizzes;
+                }
+            }
+        } catch (error) {
+            console.warn('No se pudo cargar quizzes.json, usando valor por defecto:', error.message);
+        }
+
+        this.quizCatalog = entries;
+
+        const quizParam = new URLSearchParams(window.location.search).get('quiz');
+        if (quizParam) {
+            this.uiController.setQuizFilename(quizParam);
+        }
+        this.uiController.setQuizCatalog(entries, this.uiController.getQuizFilename());
+
+        return entries;
     }
 
     /**
@@ -131,6 +165,11 @@ class QuizApp {
             
             // Update UI with success status
             this.uiController.updateFileStatus('success', successMessage, this.questions.length);
+
+            // Save skipped log for the detail screen
+            this.lastSkippedLogs = this.markdownParser.getDetailedLogs();
+            this.lastSkippedCount = parsingStats.skippedQuestions || 0;
+            this.uiController.setSkippedLog(this.lastSkippedLogs, this.lastSkippedCount);
             
             // Log detailed results
             console.log(`Cargadas ${this.questions.length} preguntas exitosamente`, {
@@ -159,6 +198,9 @@ class QuizApp {
                 this.uiController.updateFileStatus('success', 
                     `Archivo cargado con recuperación de errores (${recoveryResult.questions.length} preguntas válidas)`, 
                     recoveryResult.questions.length);
+                this.lastSkippedLogs = this.markdownParser.getDetailedLogs();
+                this.lastSkippedCount = this.markdownParser.getParsingStats().skippedQuestions || 0;
+                this.uiController.setSkippedLog(this.lastSkippedLogs, this.lastSkippedCount);
                 return;
             }
             
@@ -446,8 +488,8 @@ class QuizApp {
         try {
             console.log('Iniciando nuevo quiz');
 
-            // Reconstruir siempre desde el pool completo (this.questions):
-            // tras un Repaso, quizEngine.allQuestions queda recortado a las falladas.
+            // Always rebuild from the full pool (this.questions):
+            // after a Review, quizEngine.allQuestions stays narrowed to the failed ones.
             if (this.questions && this.questions.length > 0) {
                 const count = this.uiController
                     ? this.uiController.getQuestionCount()
@@ -490,6 +532,19 @@ class QuizApp {
         } catch (error) {
             console.error('Error al repasar falladas:', error);
             this.uiController.showError(`Error al repasar falladas: ${error.message}`);
+        }
+    }
+
+    handleViewSkipped() {
+        try {
+            if (!this.lastSkippedLogs || (this.lastSkippedCount || 0) === 0) {
+                this.uiController.showError('No hay preguntas descartadas en la última carga.');
+                return;
+            }
+            this.uiController.displaySkipped(this.lastSkippedLogs);
+        } catch (error) {
+            console.error('Error al mostrar descartadas:', error);
+            this.uiController.showError(`Error al mostrar descartadas: ${error.message}`);
         }
     }
 

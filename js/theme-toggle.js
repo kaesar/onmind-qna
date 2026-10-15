@@ -1,4 +1,4 @@
-// Toggle de tema
+// Theme toggle
 function toggleTheme() {
     document.body.classList.toggle('dark-theme');
     const btn = document.getElementById('theme-btn');
@@ -12,7 +12,7 @@ function toggleTheme() {
     }
 }
 
-// Cargar tema guardado
+// Load saved theme
 document.addEventListener('DOMContentLoaded', function() {
     const savedTheme = localStorage.getItem('theme');
     const btn = document.getElementById('theme-btn');

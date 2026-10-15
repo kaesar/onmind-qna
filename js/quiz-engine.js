@@ -1,4 +1,4 @@
-// QuizEngine - Motor del quiz para manejar la lógica del juego
+// QuizEngine - Quiz engine handling the game logic
 
 class QuizEngine {
     constructor(questions, numberOfQuestions = 10) {
@@ -29,26 +29,26 @@ class QuizEngine {
             finalQuestions: this.numberOfQuestions
         });
         
-        // Validar que tengamos preguntas disponibles
+        // Validate that questions are available
         this.validateInitialQuestions();
         
-        // Seleccionar preguntas aleatorias al inicializar
+        // Select random questions on init
         this.selectRandomQuestions();
     }
 
     selectRandomQuestions() {
-        // Crear una copia del array de preguntas para no modificar el original
+        // Copy the questions array to avoid mutating the original
         const availableQuestions = [...this.allQuestions];
         this.selectedQuestions = [];
         
-        // Seleccionar preguntas aleatorias sin repetición
+        // Select random questions without repetition
         for (let i = 0; i < this.numberOfQuestions && availableQuestions.length > 0; i++) {
             const randomIndex = Math.floor(Math.random() * availableQuestions.length);
             const selectedQuestion = availableQuestions.splice(randomIndex, 1)[0];
             this.selectedQuestions.push(selectedQuestion);
         }
         
-        // Inicializar array de respuestas del usuario
+        // Initialize user answers array
         this.userAnswers = new Array(this.selectedQuestions.length).fill(null);
         
         console.log(`Seleccionadas ${this.selectedQuestions.length} preguntas aleatorias para el quiz`);
@@ -73,7 +73,7 @@ class QuizEngine {
             return this.getCurrentQuestion();
         }
         
-        // Si es la última pregunta, marcar como completado
+        // If it is the last question, mark as completed
         if (this.currentIndex === this.selectedQuestions.length - 1) {
             this.isCompleted = true;
             this.endTime = new Date();
@@ -108,7 +108,7 @@ class QuizEngine {
                 throw new Error(`Índice de pregunta fuera de rango: ${this.currentIndex}/${this.selectedQuestions.length}`);
             }
             
-            // Inicializar tiempo de inicio si es la primera respuesta
+            // Initialize start time on first answer
             if (this.startTime === null) {
                 this.startTime = new Date();
                 this.log('info', 'Quiz iniciado - primera respuesta recibida');
@@ -117,11 +117,11 @@ class QuizEngine {
             // Validate answer format
             this.validateAnswerFormat(selectedAnswer);
             
-            // Validar que la respuesta sea válida para la pregunta actual
+            // Validate the answer against the current question
             const currentQuestion = this.selectedQuestions[this.currentIndex];
             this.validateAnswerForQuestion(selectedAnswer, currentQuestion);
             
-            // Guardar la respuesta del usuario
+            // Save the user answer
             this.userAnswers[this.currentIndex] = selectedAnswer;
             
             const isCorrect = this.isAnswerCorrect(this.currentIndex, selectedAnswer);
@@ -157,9 +157,9 @@ class QuizEngine {
         const question = this.selectedQuestions[questionIndex];
         
         // Handle multiple selection answers (e.g., "AB", "ACD")
-        if (userAnswer.length > 1) {
-            const userAnswerArray = userAnswer.split('').sort();
-            const correctAnswerArray = question.correctAnswers.sort();
+        if (question.correctAnswers.length > 1) {
+            const userAnswerArray = String(userAnswer).split('').sort();
+            const correctAnswerArray = [...question.correctAnswers].sort();
             
             // Check if arrays are equal
             return userAnswerArray.length === correctAnswerArray.length &&
@@ -198,7 +198,7 @@ class QuizEngine {
         const scoreData = this.calculateScore();
         const details = [];
         
-        // Generar detalles por pregunta
+        // Build per-question details
         for (let i = 0; i < this.selectedQuestions.length; i++) {
             const question = this.selectedQuestions[i];
             const userAnswer = this.userAnswers[i];
@@ -229,7 +229,7 @@ class QuizEngine {
             });
         }
         
-        // Calcular duración
+        // Calculate duration
         const duration = this.endTime && this.startTime ? 
             Math.round((this.endTime - this.startTime) / 1000) : 0;
         
@@ -245,7 +245,7 @@ class QuizEngine {
         };
     }
 
-    // Método para reiniciar el quiz con las mismas preguntas
+    // Restart the quiz with the same questions
     restart() {
         this.currentIndex = 0;
         this.userAnswers = new Array(this.selectedQuestions.length).fill(null);
@@ -254,7 +254,7 @@ class QuizEngine {
         this.isCompleted = false;
     }
 
-    // Método para iniciar un nuevo quiz con preguntas diferentes
+    // Start a new quiz with different questions
     startNewQuiz(numberOfQuestions = null) {
         if (numberOfQuestions !== null) {
             this.numberOfQuestions = Math.min(numberOfQuestions, this.allQuestions.length);
@@ -268,7 +268,7 @@ class QuizEngine {
         this.selectRandomQuestions();
     }
 
-    // Getters para información del estado actual
+    // Getters for current state info
     get progress() {
         return {
             current: this.currentIndex + 1,
@@ -285,7 +285,7 @@ class QuizEngine {
         return this.selectedQuestions.length - this.currentIndex - 1;
     }
 
-    // Método para obtener estadísticas del quiz actual
+    // Get stats for the current quiz
     getCurrentStats() {
         const answeredCount = this.userAnswers.filter(answer => answer !== null).length;
         let correctSoFar = 0;

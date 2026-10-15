@@ -11,6 +11,7 @@ services:
       - NGINX_PORT=80
     volumes:
       - ./Quiz.md:/usr/share/nginx/html/Quiz.md:ro
+      - ./quizzes.json:/usr/share/nginx/html/quizzes.json:ro
     deploy:
       resources:
         limits:

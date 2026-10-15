@@ -16,7 +16,8 @@ class FileHandler {
             requiredPatterns: [
                 /##\s+(Pregunta|Question)\s+\d+/i, // Question headers
                 /<as-button[^>]*message="[^"]*"[^>]*>/i, // Answer buttons
-                /^\s*\*?\*?[A-D]\*?\*?\.\s+.+$/m // Answer options
+                /^\s*\*?\*?[A-D]\*?\*?\.\s+.+$/m, // Answer options
+                /(?:^>\s*R\s*:|<!--\s*R\s*:)\s*[A-Za-z,\s]+(?:-->)?$/m // Fallback "> R:" / "<!-- R:"
             ]
         };
     }
@@ -283,10 +284,11 @@ class FileHandler {
             throw new Error('Formato inválido: no se encontraron preguntas en el formato esperado (## Pregunta XXX / ## Question XXX)');
         }
         
-        // Check for answer buttons
+        // Check for answer markers (as-button or "> R:" fallback)
         const buttonPattern = patternResults[1];
-        if (!buttonPattern.found) {
-            throw new Error('Formato inválido: no se encontraron botones de respuesta en el formato esperado (<as-button message="...">)');
+        const fallbackPattern = patternResults[3];
+        if (!buttonPattern.found && !(fallbackPattern && fallbackPattern.found)) {
+            throw new Error('Formato inválido: no se encontraron botones de respuesta en el formato esperado (<as-button message="...">, "<!-- R: ... -->" o "> R: ...")');
         }
         
         // Check for answer options
@@ -299,8 +301,9 @@ class FileHandler {
         this.log('debug', 'Análisis de patrones completado', { patternResults });
         
         // Validate pattern consistency
-        if (questionPattern.count > buttonPattern.count) {
-            this.addValidationWarning(`Se encontraron ${questionPattern.count} preguntas pero solo ${buttonPattern.count} botones de respuesta`);
+        const markerCount = buttonPattern.count + ((fallbackPattern && fallbackPattern.count) || 0);
+        if (questionPattern.count > markerCount) {
+            this.addValidationWarning(`Se encontraron ${questionPattern.count} preguntas pero solo ${markerCount} marcadores de respuesta`);
         }
         
         if (questionPattern.count * 2 > optionPattern.count) {

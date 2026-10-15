@@ -4,7 +4,7 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 COPY . .
 RUN mkdir -p /app/dist && \
-    cp -r *.html css js Quiz.md /app/dist/ && \
+    cp -r *.html css js Quiz.md quizzes.json Trivia-*.md /app/dist/ && \
     chmod -R a+rX /app/dist
 
 FROM nginx:1.25-alpine

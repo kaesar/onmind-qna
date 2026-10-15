@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Questions aNd Answers (QNA) - Trivia/Quiz Interactivo</title>
     <meta name="description" content="Aplicación de quiz interactivo basada en archivos Markdown">
-    <link rel="stylesheet" href="css/styles.css?v=202610">
+    <link rel="stylesheet" href="css/styles.css?v=20261014-4">
 </head>
 <body>
     <div class="container">
@@ -29,6 +29,12 @@
                 <p>Personaliza tu experiencia de quiz antes de comenzar.</p>
                 
                 <div class="config-section">
+                    <label for="quiz-select">Catálogo:</label>
+                    <select id="quiz-select" aria-describedby="quiz-select-help"></select>
+                    <small id="quiz-select-help">Elige del catálogo (quizzes.json)</small>
+                </div>
+
+                <div class="config-section">
                     <label for="quiz-filename">Archivo de preguntas:</label>
                     <input 
                         type="text" 
@@ -37,7 +43,7 @@
                         placeholder="Quiz.md"
                         aria-describedby="quiz-filename-help"
                     >
-                    <small id="quiz-filename-help">Nombre del archivo Markdown con las preguntas</small>
+                    <small id="quiz-filename-help">Ruta local, URL o URL S3 (también vía ?quiz=) del Markdown con las preguntas</small>
                 </div>
 
                 <div class="config-section">
@@ -69,8 +75,33 @@
                     <button id="start-quiz-btn" class="btn" disabled>
                         Iniciar Quiz
                     </button>
+                    <button id="view-skipped-btn" type="button" class="btn btn-secondary" style="display:none;">
+                        Ver omitidas
+                    </button>
                 </div>
             </section>
+        </main>
+
+        <!-- Pantalla de Descartadas -->
+        <main id="skipped-screen" class="screen">
+            <section class="results-details">
+                <h2>Preguntas descartadas</h2>
+                <p>Detalle de preguntas omitidas por errores de formato o validación.</p>
+                <div class="text-center">
+                    <button id="back-skipped-top-btn" type="button" class="btn btn-secondary" style="display:none;">
+                        Volver
+                    </button>
+                </div>
+                <div id="skipped-list">
+                    <!-- Se genera dinámicamente -->
+                </div>
+            </section>
+
+            <div class="text-center">
+                <button id="back-skipped-btn" type="button" class="btn btn-secondary">
+                    Volver
+                </button>
+            </div>
         </main>
 
         <!-- Pantalla de Quiz -->
@@ -183,11 +214,11 @@
     </style>
 
     <!-- Scripts - Load components first, then main app (?v= forces fresh JS after deploys) -->
-    <script src="js/theme-toggle.js?v=20261014"></script>
-    <script src="js/file-handler.js?v=20261014"></script>
-    <script src="js/markdown-parser.js?v=20261014"></script>
-    <script src="js/quiz-engine.js?v=20261014"></script>
-    <script src="js/ui-controller.js?v=20261014"></script>
-    <script src="js/app.js?v=20261014"></script>
+    <script src="js/theme-toggle.js?v=20261014-2"></script>
+    <script src="js/file-handler.js?v=20261014-6"></script>
+    <script src="js/markdown-parser.js?v=20261014-6"></script>
+    <script src="js/quiz-engine.js?v=20261014-7"></script>
+    <script src="js/ui-controller.js?v=20261014-7"></script>
+    <script src="js/app.js?v=20261014-4"></script>
 </body>
 </html>

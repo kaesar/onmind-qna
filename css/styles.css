@@ -138,7 +138,8 @@ body.dark-theme .theme-btn {
     color: #2c3e50;
 }
 
-.config-section input {
+.config-section input,
+.config-section select {
     width: 100%;
     padding: 0.75rem;
     border: 2px solid #e1e8ed;
@@ -147,7 +148,8 @@ body.dark-theme .theme-btn {
     transition: border-color 0.3s ease;
 }
 
-.config-section input:focus {
+.config-section input:focus,
+.config-section select:focus {
     outline: none;
     border-color: #3498db;
 }
@@ -1157,6 +1159,25 @@ body.dark-theme .correct-answer .answer-value {
     color: #7bed9f;
 }
 
+.skipped-reasons {
+    margin: 0.5rem 0;
+    padding-left: 1.2rem;
+}
+
+.skipped-block {
+    background: rgba(0, 0, 0, 0.08);
+    padding: 0.5rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 0.8rem;
+    white-space: pre-wrap;
+}
+
+body.dark-theme .skipped-block {
+    background: rgba(0, 0, 0, 0.35);
+    color: #e0e0e0;
+}
+
 body.dark-theme .header h1 {
     color: #f5f5dc;
 }
@@ -1169,13 +1190,15 @@ body.dark-theme .config-section label {
     color: #f5f5dc;
 }
 
-body.dark-theme .config-section input {
+body.dark-theme .config-section input,
+body.dark-theme .config-section select {
     background: #3d3d3d;
     border-color: #555;
     color: #e0e0e0;
 }
 
-body.dark-theme .config-section input:focus {
+body.dark-theme .config-section input:focus,
+body.dark-theme .config-section select:focus {
     border-color: #3498db;
     background: #4d4d4d;
 }

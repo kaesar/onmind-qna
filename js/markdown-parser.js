@@ -1,20 +1,25 @@
-// MarkdownParser - Parser de contenido Markdown para extraer preguntas de quiz
+// MarkdownParser - Markdown content parser for extracting quiz questions
 
 class MarkdownParser {
     constructor() {
-        // Regex para identificar bloques de preguntas usando subtítulos ##
-        this.questionBlockRegex = /## (?:Pregunta|Question) \d+\n\n([\s\S]*?)(?=## (?:Pregunta|Question)|\n---|\n#|$)/g;
+        // Regex to identify question blocks using ## subheadings
+        // Accepts "## Pregunta 001" and "## Pregunta 1. Title on the same line"
+        this.questionBlockRegex = /## (?:Pregunta|Question) \d+[^\n]*\n\n([\s\S]*?)(?=## (?:Pregunta|Question)|\n---|\n#|$)/g;
         
-        // Regex para extraer opciones de respuesta A, B, C, D, E, F, etc. (maneja formatos: A., **A**., **A**, A)
+        // Regex to extract answer options A, B, C, D, E, F, etc. (handles formats: A., **A**., **A**, A)
         this.optionRegex = /^(?:\*\*)?([A-Z])(?:\*\*)?\.*\s+(.+)$/gm;
         
-        // Regex para extraer respuestas correctas desde elementos <as-button>
+        // Regex to extract correct answers from <as-button> elements
         this.correctAnswerRegex = /<as-button[^>]*message="([^"]+)"[^>]*>/;
         
-        // Regex adicional para manejar atributo inquire (respuestas múltiples)
+        // Extra regex to handle the inquire attribute (multiple answers)
         this.inquireAnswerRegex = /<as-button[^>]*inquire="([^"]+)"[^>]*>/;
+
+        // Fallback: "<!-- R: B -->" (and legacy "> R: B") only when there is no <as-button>
+        this.fallbackAnswerRegex = /<!--\s*R\s*:\s*([A-Za-z,\s]+?)\s*-->/;
+        this.legacyFallbackAnswerRegex = /^>\s*R\s*:\s*([A-Za-z,\s]+)$/m;
         
-        // Regex para extraer el número de pregunta
+        // Regex to extract the question number
         this.questionNumberRegex = /## (Pregunta|Question) (\d+)/;
         
         // Logging and validation configuration
@@ -51,7 +56,7 @@ class MarkdownParser {
             throw new Error('El contenido del archivo Markdown no es válido para el parsing');
         }
         
-        // Resetear el índice del regex para múltiples ejecuciones
+        // Reset the regex index for multiple runs
         this.questionBlockRegex.lastIndex = 0;
         
         while ((match = this.questionBlockRegex.exec(markdownContent)) !== null) {
@@ -80,6 +85,11 @@ class MarkdownParser {
                     block: fullBlock.substring(0, 200) + '...',
                     error: error.stack
                 });
+                // Durable warnings record (validationErrors resets per question)
+                this.log('warn', `Pregunta ${questionIndex} omitida por error de extracción`, {
+                    block: fullBlock.substring(0, 200) + '...',
+                    errors: [{ message: error.message, timestamp: new Date().toISOString() }]
+                });
                 
                 // Continue processing other questions (graceful recovery)
                 continue;
@@ -106,7 +116,7 @@ class MarkdownParser {
         try {
             this.log('debug', `Iniciando extracción de pregunta ${questionIndex}`, extractionContext);
             
-            // Extraer número de pregunta
+            // Extract question number
             const numberMatch = this.questionNumberRegex.exec(questionBlock);
             if (!numberMatch) {
                 throw new Error('No se pudo extraer el número de pregunta del bloque');
@@ -116,19 +126,19 @@ class MarkdownParser {
             const questionNumber = numberMatch[2];
             this.log('debug', `Número de pregunta extraído: ${questionNumber} (${questionWord})`);
 
-            // Extraer el enunciado (texto entre el título y las opciones)
+            // Extract the statement (text between the title and the options)
             const questionContent = this.extractQuestionContent(questionBlock);
             if (!questionContent) {
                 throw new Error('No se pudo extraer el contenido de la pregunta');
             }
 
-            // Extraer opciones de respuesta
+            // Extract answer options
             const options = this.extractAnswers(questionBlock);
             if (!options || Object.keys(options).length === 0) {
                 throw new Error('No se pudieron extraer las opciones de respuesta');
             }
 
-            // Extraer respuestas correctas
+            // Extract correct answers
             const correctAnswers = this.extractCorrectAnswer(questionBlock);
             if (!correctAnswers || correctAnswers.length === 0) {
                 throw new Error('No se pudieron extraer las respuestas correctas');
@@ -171,14 +181,14 @@ class MarkdownParser {
         const options = {};
         let match;
         
-        // Resetear el índice del regex
+        // Reset the regex index
         this.optionRegex.lastIndex = 0;
         
         while ((match = this.optionRegex.exec(questionBlock)) !== null) {
             const letter = match[1]; // A, B, C, D
             let optionText = match[2].trim();
             
-            // Limpiar el texto de la opción removiendo marcado de negrita
+            // Clean the option text by removing bold markup
             optionText = this.cleanOptionText(optionText);
             
             options[letter] = optionText;
@@ -190,11 +200,11 @@ class MarkdownParser {
     extractCorrectAnswer(questionBlock) {
         const correctAnswers = [];
         
-        // Extraer respuesta principal del atributo message
+        // Extract main answer from the message attribute
         const messageMatch = this.correctAnswerRegex.exec(questionBlock);
         if (messageMatch) {
             const messageValue = messageMatch[1];
-            // Manejar respuestas múltiples en el atributo message (ej: "AB", "AC", "BE")
+            // Handle multiple answers in the message attribute (e.g., "AB", "AC", "BE")
             for (const char of messageValue) {
                 if (/[A-Z]/.test(char)) {
                     correctAnswers.push(char);
@@ -202,14 +212,27 @@ class MarkdownParser {
             }
         }
         
-        // Extraer respuestas adicionales del atributo inquire
+        // Extract additional answers from the inquire attribute
         const inquireMatch = this.inquireAnswerRegex.exec(questionBlock);
         if (inquireMatch) {
             const inquireValue = inquireMatch[1];
-            // Manejar respuestas múltiples en el atributo inquire
+            // Handle multiple answers in the inquire attribute
             for (const char of inquireValue) {
                 if (/[A-Z]/.test(char) && !correctAnswers.includes(char)) {
                     correctAnswers.push(char);
+                }
+            }
+        }
+
+        // "<!-- R: ... -->" fallback (and legacy "> R: ..."): only with no <as-button>
+        if (correctAnswers.length === 0 && !/<as-button/i.test(questionBlock)) {
+            const fallbackMatch = this.fallbackAnswerRegex.exec(questionBlock)
+                || this.legacyFallbackAnswerRegex.exec(questionBlock);
+            if (fallbackMatch) {
+                for (const char of fallbackMatch[1].toUpperCase()) {
+                    if (/[A-Z]/.test(char) && !correctAnswers.includes(char)) {
+                        correctAnswers.push(char);
+                    }
                 }
             }
         }
@@ -218,13 +241,13 @@ class MarkdownParser {
     }
 
     cleanOptionText(text) {
-        // Remover marcado de negrita (**texto**)
+        // Remove bold markup (**text**)
         text = text.replace(/\*\*(.*?)\*\*/g, '$1');
         
-        // Remover marcado de cursiva (*texto*)
+        // Remove italic markup (*text*)
         text = text.replace(/\*(.*?)\*/g, '$1');
         
-        // Limpiar espacios extra
+        // Trim extra whitespace
         text = text.trim();
         
         return text;
@@ -232,25 +255,39 @@ class MarkdownParser {
 
     extractQuestionContent(questionBlock) {
         try {
-            // Dividir por líneas para un análisis más preciso
+            // Split by lines for more accurate parsing
             const lines = questionBlock.split('\n');
             let questionContent = '';
+
+            // Title on the same header line ("## Pregunta 1. Text")
+            const headerRemainder = lines[0]
+                .replace(/^##\s*(?:Pregunta|Question)\s*\d+\s*\.?\s*/, '')
+                .trim();
+            if (headerRemainder) {
+                questionContent += headerRemainder + '\n';
+            }
             
-            // Empezar después del título (## Question/Pregunta XXX) y línea vacía
-            for (let i = 2; i < lines.length; i++) {
+            // Iterate from line 1 (after the header) to tolerate
+            // whether or not there is a blank line after the title
+            for (let i = 1; i < lines.length; i++) {
                 const line = lines[i];
                 
-                // Verificar si esta línea es una opción (A, B, C, D, E, etc. al inicio de línea seguido de punto)
+                // Check whether this line is an option (A, B, C, D, E, etc. at line start followed by a dot)
                 if (/^(?:\*\*)?[A-Z](?:\*\*)?\./.test(line)) {
                     break;
                 }
                 
-                // Parar cuando encontremos el botón de respuesta
+                // Stop when the answer button is found
                 if (line.includes('<as-button')) {
                     break;
                 }
+
+                // Stop at the fallback answer marker ("<!-- R:" or "> R:")
+                if (/<!--\s*R\s*:|^>\s*R\s*:/.test(line)) {
+                    break;
+                }
                 
-                // Agregar la línea al contenido de la pregunta
+                // Append the line to the question content
                 questionContent += line + '\n';
             }
             
@@ -274,27 +311,27 @@ class MarkdownParser {
         this.log('debug', `Iniciando validación de pregunta ${questionIndex}`, context);
         
         try {
-            // Validar estructura básica
+            // Validate basic structure
             if (!this.validateBasicStructure(questionData)) {
                 isValid = false;
             }
             
-            // Validar contenido de la pregunta
+            // Validate question content
             if (!this.validateQuestionContent(questionData)) {
                 isValid = false;
             }
             
-            // Validar opciones de respuesta
+            // Validate answer options
             if (!this.validateQuestionOptions(questionData)) {
                 isValid = false;
             }
             
-            // Validar respuestas correctas
+            // Validate correct answers
             if (!this.validateCorrectAnswers(questionData)) {
                 isValid = false;
             }
             
-            // Validar consistencia entre opciones y respuestas
+            // Validate consistency between options and answers
             if (!this.validateAnswerConsistency(questionData)) {
                 isValid = false;
             }
@@ -371,7 +408,7 @@ class MarkdownParser {
             return false;
         }
         
-        // Verificar que el contenido no esté vacío después de limpiar espacios
+        // Verify the content is not empty after trimming whitespace
         if (content.trim().length === 0) {
             this.addValidationError('Contenido de pregunta vacío después de limpiar espacios');
             return false;
@@ -394,7 +431,7 @@ class MarkdownParser {
             return false;
         }
         
-        // Verificar que las opciones requeridas estén presentes
+        // Verify the required options are present
         for (const requiredOption of this.validationRules.requiredOptionLetters) {
             if (!options[requiredOption]) {
                 this.addValidationError(`Opción requerida faltante: ${requiredOption}`);
@@ -402,7 +439,7 @@ class MarkdownParser {
             }
         }
         
-        // Validar cada opción individualmente
+        // Validate each option individually
         for (const [letter, text] of Object.entries(options)) {
             if (!this.validateSingleOption(letter, text)) {
                 return false;
@@ -444,7 +481,7 @@ class MarkdownParser {
             return false;
         }
         
-        // Verificar que todas las respuestas correctas sean letras válidas
+        // Verify all correct answers are valid letters
         for (const answer of correctAnswers) {
             if (!/^[A-Z]$/.test(answer)) {
                 this.addValidationError(`Respuesta correcta inválida: ${answer}`);
@@ -452,7 +489,7 @@ class MarkdownParser {
             }
         }
         
-        // Verificar que no haya respuestas duplicadas
+        // Verify there are no duplicate answers
         const uniqueAnswers = [...new Set(correctAnswers)];
         if (uniqueAnswers.length !== correctAnswers.length) {
             this.addValidationError('Respuestas correctas duplicadas encontradas');
@@ -465,7 +502,7 @@ class MarkdownParser {
     validateAnswerConsistency(questionData) {
         const { options, correctAnswers } = questionData;
         
-        // Verificar que todas las respuestas correctas existan en las opciones
+        // Verify all correct answers exist in the options
         for (const answer of correctAnswers) {
             if (!options[answer]) {
                 this.addValidationError(`Respuesta correcta ${answer} no existe en las opciones disponibles`);
@@ -487,7 +524,7 @@ class MarkdownParser {
             return false;
         }
         
-        // Verificar que contenga al menos una pregunta
+        // Verify it contains at least one question
         if (!this.questionBlockRegex.test(content)) {
             this.log('error', 'No se encontraron bloques de preguntas en el formato esperado');
             return false;
