@@ -630,23 +630,6 @@ C. Option C
                         tests.push('Multiple answers: FAIL');
                     }
                     
-                    // Test question with inquire attribute
-                    const inquireContent = `## Pregunta 001
-
-Test question.
-
-A. Option A
-B. Option B
-
-<as-button message="A" inquire="B"></as-button>`;
-                    
-                    const inquireQuestions = parser.parseQuestions(inquireContent);
-                    if (inquireQuestions[0].correctAnswers.length === 2) {
-                        tests.push('Inquire attribute: PASS');
-                    } else {
-                        tests.push('Inquire attribute: FAIL');
-                    }
-                    
                     // Test quiz with more questions requested than available
                     const mockQuestions = [
                         { id: '001', content: 'Q1', options: { A: 'A', B: 'B' }, correctAnswers: ['A'] },

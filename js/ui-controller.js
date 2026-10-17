@@ -2,6 +2,8 @@
  * UIController - Manages all user interface interactions and screen navigation
  * Handles displaying questions, configuration, progress, and results
  */
+const ANSWER_SEPARATOR = ' ·|· ';
+
 class UIController {
     constructor() {
         // Screen elements
@@ -40,8 +42,12 @@ class UIController {
         this.skippedList = document.getElementById('skipped-list');
         this.backSkippedBtn = document.getElementById('back-skipped-btn');
         this.backSkippedTopBtn = document.getElementById('back-skipped-top-btn');
+        this.langBtn = document.getElementById('lang-btn');
         this.lastSkippedLogs = null;
         this.lastSkippedCount = 0;
+        this._lastIsLast = false;
+        this._lastResults = null;
+        this._lastFileStatus = null;
         
         // State
         this.currentScreen = 'config';
@@ -105,6 +111,10 @@ class UIController {
 
         if (this.backSkippedTopBtn) {
             this.backSkippedTopBtn.addEventListener('click', () => this.showScreen('config'));
+        }
+
+        if (this.langBtn) {
+            this.langBtn.addEventListener('click', () => this.toggleLanguage());
         }
         
         // Option selection events (delegated)
@@ -207,11 +217,8 @@ class UIController {
                 
             case 'success':
                 this.totalQuestionsAvailable = questionsCount;
-                this.fileStatusDiv.innerHTML = `
-                    <div style="color: #27ae60; font-size: 1.2rem; margin-bottom: 0.5rem;">✓</div>
-                    <p>${message}</p>
-                    <small>${questionsCount} preguntas disponibles</small>
-                `;
+                this._lastFileStatus = { status: 'success', count: questionsCount };
+                this._renderFileSuccess(message, questionsCount);
                 this.startQuizBtn.disabled = false;
                 
                 // Update limits and reload configuration to ensure saved values are within new limits
@@ -231,6 +238,16 @@ class UIController {
         }
     }
 
+    _renderFileSuccess(message, questionsCount) {
+        if (!this.fileStatusDiv) return;
+        this.fileStatusDiv.className = 'success';
+        this.fileStatusDiv.innerHTML = `
+            <div style="color: #27ae60; font-size: 1.2rem; margin-bottom: 0.5rem;">✓</div>
+            <p>${message}</p>
+            <small>${t('questionsAvailable', { n: questionsCount })}</small>
+        `;
+    }
+
     setSkippedLog(logs, count) {
         this.lastSkippedLogs = logs || null;
         this.lastSkippedCount = count || 0;
@@ -238,8 +255,8 @@ class UIController {
         if (this.viewSkippedBtn) {
             this.viewSkippedBtn.style.display = this.lastSkippedCount > 0 ? '' : 'none';
             this.viewSkippedBtn.textContent = this.lastSkippedCount > 0
-                ? `Ver omitidas (${this.lastSkippedCount})`
-                : 'Ver omitidas';
+                ? t('skippedBtnCount', { n: this.lastSkippedCount })
+                : t('skippedBtn');
         }
     }
 
@@ -261,7 +278,7 @@ class UIController {
         });
 
         if (items.length === 0) {
-            this.skippedList.innerHTML = '<p>No hay detalle de descartadas para esta carga.</p>';
+            this.skippedList.innerHTML = `<p>${t('noSkippedDetail')}</p>`;
             if (this.backSkippedTopBtn) this.backSkippedTopBtn.style.display = 'none';
             return;
         }
@@ -274,15 +291,21 @@ class UIController {
             const entry = document.createElement('div');
             entry.className = 'result-item incorrect';
 
+            // Parser log messages are always Spanish: render the title in UI language
+            const idx = /Pregunta (\d+) omitida por (.+)/.exec(item.message || '');
+            const title = idx
+                ? t(/validaci.n fallida/i.test(idx[2]) ? 'skippedItemValidation' : 'skippedItemExtraction', { n: idx[1] })
+                : this.sanitizeErrorMessage(item.message);
+
             const reasons = (item.data?.errors || [])
-                .map(err => `<li>${this.sanitizeErrorMessage(err.message || err)}</li>`)
+                .map(err => `<li>${this.sanitizeErrorMessage(translateParserReason(err.message || err))}</li>`)
                 .join('');
             const block = item.data?.block || item.data?.blockPreview || '';
 
             entry.innerHTML = `
                 <div class="result-question">
                     <span class="question-number-badge">${index + 1}</span>
-                    <span class="question-text">${this.sanitizeErrorMessage(item.message)}</span>
+                    <span class="question-text">${title}</span>
                 </div>
                 ${reasons ? `<ul class="skipped-reasons">${reasons}</ul>` : ''}
                 ${block ? `<pre class="skipped-block">${this.sanitizeErrorMessage(block)}</pre>` : ''}
@@ -304,7 +327,7 @@ class UIController {
         // Update help text
         const helpText = document.getElementById('question-count-help');
         if (helpText) {
-            helpText.textContent = `Selecciona entre 1 y ${this.totalQuestionsAvailable} preguntas`;
+            helpText.textContent = t('countHelp', { n: this.totalQuestionsAvailable });
         }
         
         // Adjust current value if it exceeds available questions
@@ -371,11 +394,9 @@ class UIController {
             this.quizSelect.value = hit.path;
             this.setQuizFilename(hit.path);
         } else {
-            const custom = document.createElement('option');
-            custom.value = current;
-            custom.textContent = current;
-            this.quizSelect.appendChild(custom);
-            this.quizSelect.value = current;
+            // Custom path (?quiz= or typed value): not added to the catalog;
+            // the dropdown stays on the default entry, the input keeps the source.
+            this.quizSelect.value = list[0].path;
         }
         this.applyQuizSuggestion(this.quizSelect.value);
     }
@@ -400,7 +421,12 @@ class UIController {
         if (!this.questionCountInput) return 10;
         
         const value = parseInt(this.questionCountInput.value);
-        return Math.min(Math.max(value, 1), this.totalQuestionsAvailable);
+        if (isNaN(value)) return 10;
+        const floored = Math.max(value, 1);
+        // Total 0 means "still unknown": do not clamp down to 0
+        return this.totalQuestionsAvailable > 0
+            ? Math.min(floored, this.totalQuestionsAvailable)
+            : floored;
     }
 
     // Quiz Screen Methods
@@ -412,6 +438,11 @@ class UIController {
         
         const { question, questionNumber, totalQuestions, isLast } = questionData;
         
+        // Remember header for language refresh
+        this._lastQNum = questionNumber;
+        this._lastQTotal = totalQuestions;
+        this._lastTitleFallback = !question.title;
+        
         // Show quiz screen first
         this.showScreen('quiz');
         
@@ -419,12 +450,12 @@ class UIController {
         setTimeout(() => {
             // Update question header with animation
             if (this.questionNumber) {
-                this.questionNumber.textContent = `Pregunta ${questionNumber}`;
+                this.questionNumber.textContent = t('questionN', { n: questionNumber });
                 this.questionNumber.classList.add('slide-in-left');
             }
             
             if (this.progressText) {
-                this.progressText.textContent = `${questionNumber} de ${totalQuestions}`;
+                this.progressText.textContent = t('progressOf', { a: questionNumber, b: totalQuestions });
                 this.progressText.classList.add('slide-in-right');
             }
         }, 100);
@@ -432,7 +463,7 @@ class UIController {
         setTimeout(() => {
             // Update question content with animation
             if (this.questionTitle) {
-                this.questionTitle.textContent = question.title || `Pregunta ${questionNumber}`;
+                this.questionTitle.textContent = question.title || t('questionN', { n: questionNumber });
                 this.questionTitle.classList.add('fade-in');
             }
             
@@ -453,8 +484,9 @@ class UIController {
         this.updateProgress(questionNumber, totalQuestions);
         
         // Update next button text for last question
+        this._lastIsLast = !!isLast;
         if (this.nextQuestionBtn) {
-            this.nextQuestionBtn.textContent = isLast ? 'Ver Resultados' : 'Siguiente Pregunta';
+            this.nextQuestionBtn.textContent = t(isLast ? 'resultsBtn' : 'nextBtn');
             this.nextQuestionBtn.disabled = true; // Enable when answer is selected
             
             // Remove any previous animation classes
@@ -526,6 +558,7 @@ class UIController {
         
         // Show results screen first
         this.showScreen('results');
+        this._lastResults = results;
 
         // Toggle review-failed button: only if there are failures
         if (this.reviewFailedBtn) {
@@ -534,8 +567,8 @@ class UIController {
                 : (results.totalQuestions - results.correctCount);
             this.reviewFailedBtn.style.display = failedCount > 0 ? '' : 'none';
             this.reviewFailedBtn.textContent = failedCount > 0
-                ? `Repasar (${failedCount})`
-                : 'Repasar';
+                ? t('reviewBtnCount', { n: failedCount })
+                : t('reviewBtn');
             this.reviewFailedBtn.disabled = failedCount === 0;
         }
         
@@ -554,6 +587,7 @@ class UIController {
         if (this.scoreDisplay) {
             // Color code the score with gradient
             let colorClass = '';
+            this.scoreDisplay.style.color = '#fff';
             if (results.score >= 80) {
                 this.scoreDisplay.style.background = 'linear-gradient(135deg, #27ae60, #2ecc71)';
                 colorClass = 'excellent';
@@ -576,7 +610,10 @@ class UIController {
         
         if (this.scoreText) {
             setTimeout(() => {
-                this.scoreText.textContent = `${results.correctCount} de ${results.totalQuestions} respuestas correctas`;
+                this.scoreText.textContent = t('scoreOf', {
+                    c: results.correctCount,
+                    t: results.totalQuestions
+                });
                 this.scoreText.classList.add('fade-in');
                 
                 // Add encouraging message based on score (replace previous)
@@ -625,15 +662,15 @@ class UIController {
 
     getEncouragementMessage(score) {
         if (score >= 90) {
-            return '¡Excelente! Dominas el tema perfectamente.';
+            return t('enc90');
         } else if (score >= 80) {
-            return '¡Muy bien! Tienes un buen conocimiento del tema.';
+            return t('enc80');
         } else if (score >= 70) {
-            return 'Buen trabajo. Con un poco más de estudio serás un experto.';
+            return t('enc70');
         } else if (score >= 60) {
-            return 'No está mal. Revisa los temas que fallaste y vuelve a intentarlo.';
+            return t('enc60');
         } else {
-            return 'Sigue practicando. Cada intento te acerca más al éxito.';
+            return t('encLow');
         }
     }
 
@@ -709,26 +746,36 @@ class UIController {
                 ? detail.question.content.substring(0, 100) + '...'
                 : detail.question.content;
             
+            // Answers: single -> "L. text"; multiple -> "A, B ·|· A. textA ·|· B. textB"
+            const formatAnswers = (letters) => {
+                const list = (Array.isArray(letters) ? letters : String(letters || '').split(''))
+                    .filter(letter => /[A-Z]/.test(letter));
+                const described = list.map(letter => `${letter}. ${detail.question.options[letter] ?? ''}`);
+                if (list.length > 1) {
+                    return [list.join(', '), ...described].join(ANSWER_SEPARATOR);
+                }
+                return described.join(ANSWER_SEPARATOR);
+            };
+            
             let answerInfo = '';
             if (detail.isCorrect) {
                 answerInfo = `
                     <div class="result-answer">
-                        <span class="answer-label">Tu respuesta:</span> 
-                        <span class="answer-value correct">${detail.userAnswer}. ${detail.userAnswerText}</span>
+                        <span class="answer-label">${t('yourAnswer')}</span> 
+                        <span class="answer-value correct">${formatAnswers(detail.userAnswer)}</span>
                         <span class="answer-icon">✓</span>
                     </div>
                 `;
             } else {
-                const correctAnswersText = detail.correctAnswerTexts.join(' o ');
                 answerInfo = `
                     <div class="result-answer">
-                        <span class="answer-label">Tu respuesta:</span> 
-                        <span class="answer-value incorrect">${detail.userAnswer || 'Sin respuesta'}. ${detail.userAnswerText || 'No respondida'}</span>
+                        <span class="answer-label">${t('yourAnswer')}</span> 
+                        <span class="answer-value incorrect">${formatAnswers(detail.userAnswer) || t('notAnswered')}</span>
                         <span class="answer-icon">✗</span>
                     </div>
                     <div class="result-answer correct-answer">
-                        <span class="answer-label">Respuesta correcta:</span> 
-                        <span class="answer-value">${detail.correctAnswers.join(', ')}. ${correctAnswersText}</span>
+                        <span class="answer-label">${t('correctAnswer')}</span> 
+                        <span class="answer-value">${formatAnswers(detail.correctAnswers)}</span>
                     </div>
                 `;
             }
@@ -999,7 +1046,7 @@ class UIController {
 
     onNextQuestion() {
         if (!this.selectedAnswer) {
-            alert('Por favor selecciona una respuesta antes de continuar.');
+            alert(t('selectFirst'));
             return;
         }
         
@@ -1082,14 +1129,14 @@ class UIController {
             <div style="display: flex; align-items: flex-start; gap: 12px;">
                 <div style="font-size: 20px; flex-shrink: 0;">⚠️</div>
                 <div style="flex: 1;">
-                    <div style="font-weight: bold; margin-bottom: 8px;">Error en la aplicación</div>
+                    <div style="font-weight: bold; margin-bottom: 8px;">${t('errTitle')}</div>
                     <div style="margin-bottom: 12px; line-height: 1.4;">${this.sanitizeErrorMessage(message)}</div>
         `;
         
         if (details) {
             content += `
                 <details style="margin-top: 8px;">
-                    <summary style="cursor: pointer; font-size: 0.9em; opacity: 0.8;">Ver detalles técnicos</summary>
+                    <summary style="cursor: pointer; font-size: 0.9em; opacity: 0.8;">${t('techDetails')}</summary>
                     <pre style="margin-top: 8px; font-size: 0.8em; opacity: 0.7; white-space: pre-wrap; max-height: 100px; overflow-y: auto;">${this.sanitizeErrorMessage(JSON.stringify(details, null, 2))}</pre>
                 </details>
             `;
@@ -1098,7 +1145,7 @@ class UIController {
         content += `
                     <button onclick="this.parentElement.parentElement.parentElement.remove()" 
                             style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9em; margin-top: 8px;">
-                        Cerrar
+                        ${t('closeBtn')}
                     </button>
                 </div>
             </div>
@@ -1124,38 +1171,24 @@ class UIController {
     }
 
     showUserFriendlyError(technicalError, userContext = '') {
-        let userMessage = 'Ha ocurrido un error inesperado.';
+        let userMessage = t('errUnexpected');
         let suggestions = [];
         
         // Analyze error and provide user-friendly messages
-        if (technicalError.includes('File not found') || technicalError.includes('404')) {
-            userMessage = 'No se pudo encontrar el archivo de preguntas.';
-            suggestions = [
-                'Verifica que el archivo "Quiz.md" existe en la carpeta del proyecto',
-                'Asegúrate de que el nombre del archivo es correcto',
-                'Recarga la página para intentar nuevamente'
-            ];
-        } else if (technicalError.includes('Invalid markdown content') || technicalError.includes('parsing')) {
-            userMessage = 'El archivo de preguntas tiene un formato incorrecto.';
-            suggestions = [
-                'Verifica que el archivo contiene preguntas en el formato esperado',
-                'Asegúrate de que cada pregunta tiene opciones A, B, C, D',
-                'Revisa que los botones de respuesta están correctamente formateados'
-            ];
-        } else if (technicalError.includes('Network') || technicalError.includes('fetch')) {
-            userMessage = 'Problema de conexión al cargar el archivo.';
-            suggestions = [
-                'Verifica tu conexión a internet',
-                'Recarga la página para intentar nuevamente',
-                'Si el problema persiste, contacta al administrador'
-            ];
+        if (technicalError.includes('File not found') || technicalError.includes('404') || technicalError.includes('Archivo no encontrado')) {
+            userMessage = t('errNotFound');
+            suggestions = tList('sugNotFound');
+        } else if (technicalError.includes('Invalid markdown content') || technicalError.includes('parsing')
+            || technicalError.includes('Formato inválido') || technicalError.includes('No se encontraron preguntas')) {
+            userMessage = t('errFormat');
+            suggestions = tList('sugFormat');
+        } else if (technicalError.includes('Network') || technicalError.includes('fetch')
+            || technicalError.includes('Error de red') || technicalError.includes('Error de conexión')) {
+            userMessage = t('errNetwork');
+            suggestions = tList('sugNetwork');
         } else if (technicalError.includes('Quiz engine') || technicalError.includes('questions')) {
-            userMessage = 'Error en el sistema de preguntas del quiz.';
-            suggestions = [
-                'Intenta reiniciar el quiz',
-                'Verifica que hay preguntas válidas disponibles',
-                'Recarga la página si el problema persiste'
-            ];
+            userMessage = t('errEngine');
+            suggestions = tList('sugEngine');
         }
         
         // Add context if provided
@@ -1166,7 +1199,7 @@ class UIController {
         // Create enhanced error message
         let enhancedMessage = userMessage;
         if (suggestions.length > 0) {
-            enhancedMessage += '\n\nSugerencias:\n• ' + suggestions.join('\n• ');
+            enhancedMessage += '\n\n' + t('sugPrefix') + '\n• ' + suggestions.join('\n• ');
         }
         
         this.showError(enhancedMessage, { technicalError, timestamp: new Date().toISOString() });
@@ -1307,8 +1340,79 @@ class UIController {
 
     // Initialize the UI
     initialize() {
+        getLanguage();
         this.loadConfiguration();
         this.showConfiguration();
+        this.applyLanguage();
+    }
+
+    toggleLanguage() {
+        setLanguage(getLanguage() === 'en' ? 'es' : 'en');
+        this.applyLanguage();
+    }
+
+    applyLanguage() {
+        translateStatic();
+        this.refreshDynamicLabels();
+    }
+
+    refreshDynamicLabels() {
+        if (this.langBtn) {
+            this.langBtn.textContent = getLanguage() === 'en' ? '🇪🇸' : '🇺🇸';
+        }
+
+        const helpText = document.getElementById('question-count-help');
+        if (helpText && this.totalQuestionsAvailable > 0) {
+            helpText.textContent = t('countHelp', { n: this.totalQuestionsAvailable });
+        }
+
+        if (this.currentScreen === 'quiz' && this.nextQuestionBtn) {
+            this.nextQuestionBtn.textContent = t(this._lastIsLast ? 'resultsBtn' : 'nextBtn');
+        }
+
+        if (this.currentScreen === 'quiz' && this._lastQNum) {
+            if (this.questionNumber) {
+                this.questionNumber.textContent = t('questionN', { n: this._lastQNum });
+            }
+            if (this.progressText && this._lastQTotal) {
+                this.progressText.textContent = t('progressOf', { a: this._lastQNum, b: this._lastQTotal });
+            }
+            if (this.questionTitle && this._lastTitleFallback) {
+                this.questionTitle.textContent = t('questionN', { n: this._lastQNum });
+            }
+        }
+
+        if (this._lastResults && this.reviewFailedBtn) {
+            const failedCount = this._lastResults.details
+                ? this._lastResults.details.filter(d => !d.isCorrect).length
+                : (this._lastResults.totalQuestions - this._lastResults.correctCount);
+            this.reviewFailedBtn.textContent = failedCount > 0
+                ? t('reviewBtnCount', { n: failedCount })
+                : t('reviewBtn');
+        }
+
+        if (this.viewSkippedBtn && this.lastSkippedCount >= 0) {
+            this.setSkippedLog(this.lastSkippedLogs, this.lastSkippedCount);
+        }
+
+        if (this._lastResults && this.currentScreen === 'results' && this.scoreText) {
+            this.scoreText.textContent = t('scoreOf', {
+                c: this._lastResults.correctCount,
+                t: this._lastResults.totalQuestions
+            });
+            const enc = document.querySelector('.encouragement-message');
+            if (enc) enc.textContent = this.getEncouragementMessage(this._lastResults.score);
+        }
+
+        if (this._lastFileStatus && this._lastFileStatus.status === 'success') {
+            const msg = t('fileLoaded')
+                + (this.lastSkippedCount > 0 ? t('fileLoadedSkipped', { n: this.lastSkippedCount }) : '');
+            this._renderFileSuccess(msg, this._lastFileStatus.count);
+        }
+
+        if (this.currentScreen === 'skipped' && this.lastSkippedLogs) {
+            this.displaySkipped(this.lastSkippedLogs);
+        }
     }
 }
 

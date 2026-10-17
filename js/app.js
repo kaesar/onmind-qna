@@ -42,13 +42,17 @@ class QuizApp {
             // Load quiz catalog, apply ?quiz= override, then load questions
             await this.loadQuizCatalog();
             await this.loadQuestions(this.uiController.getQuizFilename());
+            // Saved-config reload during file load stomps URL params: re-assert them
+            this.applyUrlOverrides();
+            // ?question= validates a single question: start it directly
+            this.autoStartSpecificQuestion();
             
             this.isInitialized = true;
             console.log('Aplicación inicializada correctamente');
             
         } catch (error) {
             console.error('Error al inicializar la aplicación:', error);
-            if (this.uiController) {
+            if (this.uiController && !error.userNotified) {
                 this.uiController.updateFileStatus('error', 
                     `Error al cargar la aplicación: ${error.message}`);
             }
@@ -109,8 +113,68 @@ class QuizApp {
             this.uiController.setQuizFilename(quizParam);
         }
         this.uiController.setQuizCatalog(entries, this.uiController.getQuizFilename());
+        this.applyUrlOverrides();
 
         return entries;
+    }
+
+    /**
+     * Re-assert ?quiz=, ?questions= and ?question= over the inputs (saved
+     * config reloads after file load would otherwise stomp them)
+     */
+    applyUrlOverrides() {
+        const params = new URLSearchParams(window.location.search);
+        const quizParam = params.get('quiz');
+        if (quizParam) {
+            this.uiController.setQuizFilename(quizParam);
+        }
+
+        // ?question= validates a single question: the count is forced to 1
+        const questionParam = params.get('question');
+        if (questionParam && this.uiController.questionCountInput) {
+            this.uiController.questionCountInput.value = 1;
+            return;
+        }
+
+        const questionsParam = parseInt(params.get('questions'), 10);
+        if (questionsParam > 0 && this.uiController.questionCountInput) {
+            const total = this.uiController.totalQuestionsAvailable || questionsParam;
+            this.uiController.questionCountInput.value = Math.min(Math.max(1, questionsParam), total);
+        }
+    }
+
+    /**
+     * Resolve a question by its code/number (e.g. "9", "009", "18")
+     */
+    resolveQuestionByCode(code) {
+        const raw = String(code == null ? '' : code).trim();
+        if (!raw) return null;
+
+        const digits = raw.replace(/\D/g, '');
+        const padded = digits ? digits.padStart(3, '0') : '';
+
+        return this.questions.find(q => q.id === raw)
+            || (padded ? this.questions.find(q => q.id === padded) : null)
+            || null;
+    }
+
+    /**
+     * Auto-start a single-question quiz from ?question= (if present and resolvable)
+     */
+    autoStartSpecificQuestion() {
+        const questionParam = new URLSearchParams(window.location.search).get('question');
+        if (!questionParam) return;
+
+        const question = this.resolveQuestionByCode(questionParam);
+        if (!question) {
+            this.uiController.showUserFriendlyError(
+                t('qNotFound', { c: questionParam }), 'validando pregunta específica');
+            return;
+        }
+
+        console.log(`Iniciando validación de la pregunta ${question.id}`);
+        this.quizEngine = new QuizEngine([question], 1);
+        this.displayCurrentQuestion();
     }
 
     /**
@@ -157,9 +221,9 @@ class QuizApp {
             console.log('Estadísticas de archivo:', fileStats);
             
             // Create success message with details
-            let successMessage = 'Archivo cargado correctamente';
+            let successMessage = t('fileLoaded');
             if (parsingStats && parsingStats.skippedQuestions > 0) {
-                successMessage += ` (${parsingStats.skippedQuestions} preguntas omitidas por errores de formato)`;
+                successMessage += t('fileLoadedSkipped', { n: parsingStats.skippedQuestions });
                 console.warn('Preguntas omitidas:', parsingStats.skippedQuestions, 'razones:', parsingStats.errors || 'No disponible');
             }
             
@@ -188,119 +252,40 @@ class QuizApp {
             
         } catch (error) {
             console.error('Error al cargar preguntas:', error, loadingContext);
-            
-            // Attempt graceful recovery
-            const recoveryResult = await this.attemptErrorRecovery(error);
-            
-            if (recoveryResult.recovered) {
-                console.log('Recuperación exitosa:', recoveryResult);
-                this.questions = recoveryResult.questions;
-                this.uiController.updateFileStatus('success', 
-                    `Archivo cargado con recuperación de errores (${recoveryResult.questions.length} preguntas válidas)`, 
-                    recoveryResult.questions.length);
-                this.lastSkippedLogs = this.markdownParser.getDetailedLogs();
-                this.lastSkippedCount = this.markdownParser.getParsingStats().skippedQuestions || 0;
-                this.uiController.setSkippedLog(this.lastSkippedLogs, this.lastSkippedCount);
-                return;
-            }
-            
-            // Create user-friendly error message
+
+            // No silent fallback to another file: report the failure for the requested file
             const userFriendlyMessage = this.createUserFriendlyErrorMessage(error);
-            
+
             // Update UI with error status
             this.uiController.updateFileStatus('error', userFriendlyMessage);
-            
+
             // Show detailed error to user
             this.uiController.showUserFriendlyError(error.message, 'cargando archivo de preguntas');
-            
+
+            // Mark as already reported so callers don't overwrite the descriptive message
+            error.userNotified = true;
             throw error;
         }
     }
 
-    async attemptErrorRecovery(originalError) {
-        console.log('Intentando recuperación de errores...');
-        
-        try {
-            // Try alternative file paths
-            const alternativePaths = [
-                './Quiz.md',
-                '../Quiz.md',
-                'data/Quiz.md',
-                'assets/Quiz.md'
-            ];
-            
-            for (const altPath of alternativePaths) {
-                if (altPath === this.currentFilePath) continue;
-                
-                try {
-                    console.log(`Intentando ruta alternativa: ${altPath}`);
-                    const content = await this.fileHandler.loadMarkdownFile(altPath);
-                    const questions = this.markdownParser.parseQuestions(content);
-                    
-                    if (questions.length > 0) {
-                        console.log(`Recuperación exitosa con ${altPath}: ${questions.length} preguntas`);
-                        return {
-                            recovered: true,
-                            questions,
-                            recoveryMethod: 'alternative_path',
-                            recoveryPath: altPath
-                        };
-                    }
-                } catch (altError) {
-                    console.debug(`Ruta alternativa ${altPath} falló:`, altError.message);
-                }
-            }
-            
-            // Try with relaxed validation if original error was validation-related
-            if (originalError.message.includes('validation') || originalError.message.includes('Invalid')) {
-                try {
-                    console.log('Intentando carga con validación relajada...');
-                    
-                    // Temporarily disable strict validation
-                    const originalValidation = this.markdownParser.enableDetailedLogging;
-                    this.markdownParser.enableDetailedLogging = false;
-                    
-                    const content = await this.fileHandler.loadMarkdownFile(this.currentFilePath);
-                    const questions = this.markdownParser.parseQuestions(content);
-                    
-                    // Restore original validation setting
-                    this.markdownParser.enableDetailedLogging = originalValidation;
-                    
-                    if (questions.length > 0) {
-                        console.log(`Recuperación con validación relajada: ${questions.length} preguntas`);
-                        return {
-                            recovered: true,
-                            questions,
-                            recoveryMethod: 'relaxed_validation'
-                        };
-                    }
-                } catch (relaxedError) {
-                    console.debug('Recuperación con validación relajada falló:', relaxedError.message);
-                }
-            }
-            
-        } catch (recoveryError) {
-            console.error('Error durante intento de recuperación:', recoveryError);
-        }
-        
-        return { recovered: false };
-    }
-
     createUserFriendlyErrorMessage(error) {
         const message = error.message || 'Error desconocido';
-        
-        if (message.includes('File not found') || message.includes('404')) {
-            return `No se encontró el archivo "${this.currentFilePath}". Asegúrate de que el archivo existe en la carpeta del proyecto.`;
-        } else if (message.includes('Invalid markdown content') || message.includes('No questions found')) {
-            return 'El archivo no contiene preguntas en el formato esperado. Verifica el formato del contenido.';
-        } else if (message.includes('Network') || message.includes('fetch failed')) {
-            return 'Error de conexión al cargar el archivo. Verifica tu conexión a internet.';
-        } else if (message.includes('parsing') || message.includes('extract')) {
-            return 'Error al procesar el contenido del archivo. Algunos elementos pueden tener formato incorrecto.';
-        } else if (message.includes('validation')) {
-            return 'Se encontraron problemas de formato en algunas preguntas. Revisa la estructura del archivo.';
+        const filePath = error.filePath || this.currentFilePath;
+
+        if (message.includes('File not found') || message.includes('404') || message.includes('Archivo no encontrado')) {
+            return t('loadErrNotFound', { f: filePath });
+        } else if (message.includes('Invalid markdown content') || message.includes('No questions found')
+            || message.includes('Formato inválido') || message.includes('No se encontraron preguntas')) {
+            return t('loadErrFormat', { f: filePath });
+        } else if (message.includes('Network') || message.includes('fetch failed')
+            || message.includes('Error de red') || message.includes('Error de conexión')) {
+            return t('loadErrNetwork');
+        } else if (message.includes('parsing') || message.includes('extract') || message.includes('procesar')) {
+            return t('loadErrParsing', { f: filePath });
+        } else if (message.includes('validation') || message.includes('validación')) {
+            return t('loadErrValidation', { f: filePath });
         } else {
-            return `Error al cargar el archivo: ${message}`;
+            return t('loadErrGeneric', { f: filePath, m: message });
         }
     }
 
@@ -321,7 +306,9 @@ class QuizApp {
             
         } catch (error) {
             console.error('Error al cargar archivo:', error);
-            this.uiController.updateFileStatus('error', `Error: ${error.message}`);
+            if (!error.userNotified) {
+                this.uiController.updateFileStatus('error', `Error: ${error.message}`);
+            }
         }
     }
 
@@ -358,7 +345,7 @@ class QuizApp {
                 // Inform user about adjustment
                 if (actualQuestionCount < questionCount) {
                     this.uiController.showUserFriendlyError(
-                        `Solo hay ${actualQuestionCount} preguntas disponibles, se ajustó de ${questionCount}`,
+                        t('adjustedCount', { a: actualQuestionCount, r: questionCount }),
                         'iniciando quiz'
                     );
                 }
@@ -477,7 +464,7 @@ class QuizApp {
             
         } catch (error) {
             console.error('Error al procesar respuesta:', error);
-            this.uiController.showError(`Error al procesar la respuesta: ${error.message}`);
+            this.uiController.showError(t('errAnswer', { m: error.message }));
         }
     }
 
@@ -506,7 +493,7 @@ class QuizApp {
 
         } catch (error) {
             console.error('Error al iniciar nuevo quiz:', error);
-            this.uiController.showError(`Error al iniciar nuevo quiz: ${error.message}`);
+            this.uiController.showError(t('errNewQuiz', { m: error.message }));
         }
     }
 
@@ -522,7 +509,7 @@ class QuizApp {
             );
 
             if (failedQuestions.length === 0) {
-                this.uiController.showError('Sin falladas para repasar.');
+                this.uiController.showError(t('noFailed'));
                 return;
             }
 
@@ -531,20 +518,20 @@ class QuizApp {
             this.displayCurrentQuestion();
         } catch (error) {
             console.error('Error al repasar falladas:', error);
-            this.uiController.showError(`Error al repasar falladas: ${error.message}`);
+            this.uiController.showError(t('errReview', { m: error.message }));
         }
     }
 
     handleViewSkipped() {
         try {
             if (!this.lastSkippedLogs || (this.lastSkippedCount || 0) === 0) {
-                this.uiController.showError('No hay preguntas descartadas en la última carga.');
+                this.uiController.showError(t('noSkipped'));
                 return;
             }
             this.uiController.displaySkipped(this.lastSkippedLogs);
         } catch (error) {
             console.error('Error al mostrar descartadas:', error);
-            this.uiController.showError(`Error al mostrar descartadas: ${error.message}`);
+            this.uiController.showError(t('errSkipped', { m: error.message }));
         }
     }
 
@@ -572,7 +559,7 @@ class QuizApp {
             
         } catch (error) {
             console.error('Error al mostrar pregunta:', error);
-            this.uiController.showError(`Error al mostrar la pregunta: ${error.message}`);
+            this.uiController.showError(t('errShowQ', { m: error.message }));
         }
     }
 
@@ -597,7 +584,7 @@ class QuizApp {
             
         } catch (error) {
             console.error('Error al mostrar resultados:', error);
-            this.uiController.showError(`Error al mostrar los resultados: ${error.message}`);
+            this.uiController.showError(t('errShowR', { m: error.message }));
         }
     }
 
@@ -703,14 +690,14 @@ window.addEventListener('error', (event) => {
     
     if (quizApp && quizApp.uiController) {
         // Provide user-friendly error message
-        let userMessage = 'Ha ocurrido un error inesperado en la aplicación.';
+        let userMessage = t('sysErrUnexpected');
         
         if (errorInfo.message.includes('fetch') || errorInfo.message.includes('network')) {
-            userMessage = 'Error de conexión. Verifica tu conexión a internet.';
+            userMessage = t('sysErrConn');
         } else if (errorInfo.message.includes('parse') || errorInfo.message.includes('JSON')) {
-            userMessage = 'Error procesando datos. El archivo puede tener formato incorrecto.';
+            userMessage = t('sysErrParse');
         } else if (errorInfo.message.includes('permission') || errorInfo.message.includes('access')) {
-            userMessage = 'Error de permisos. Verifica que tienes acceso al archivo.';
+            userMessage = t('sysErrPerm');
         }
         
         quizApp.uiController.showUserFriendlyError(userMessage, 'error del sistema');
@@ -732,14 +719,14 @@ window.addEventListener('unhandledrejection', (event) => {
     
     if (quizApp && quizApp.uiController) {
         // Provide user-friendly error message for promise rejections
-        let userMessage = 'Error en operación asíncrona.';
+        let userMessage = t('opErrAsync');
         
         if (rejectionInfo.message.includes('File not found') || rejectionInfo.message.includes('404')) {
-            userMessage = 'No se pudo cargar un archivo necesario.';
+            userMessage = t('opErrFile');
         } else if (rejectionInfo.message.includes('timeout')) {
-            userMessage = 'La operación tardó demasiado tiempo. Intenta nuevamente.';
+            userMessage = t('opErrTimeout');
         } else if (rejectionInfo.message.includes('network') || rejectionInfo.message.includes('fetch')) {
-            userMessage = 'Error de conexión durante la operación.';
+            userMessage = t('opErrConn');
         }
         
         quizApp.uiController.showUserFriendlyError(userMessage, 'operación asíncrona');

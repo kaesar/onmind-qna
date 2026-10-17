@@ -204,28 +204,12 @@ class QuizEngine {
             const userAnswer = this.userAnswers[i];
             const isCorrect = userAnswer ? this.isAnswerCorrect(i, userAnswer) : false;
             
-            // Handle multiple selection answer text
-            let userAnswerText = 'Sin respuesta';
-            if (userAnswer) {
-                if (userAnswer.length > 1) {
-                    // Multiple selection - combine all selected option texts
-                    userAnswerText = userAnswer.split('').map(letter => 
-                        `${letter}. ${question.options[letter]}`
-                    ).join(', ');
-                } else {
-                    // Single selection
-                    userAnswerText = `${userAnswer}. ${question.options[userAnswer]}`;
-                }
-            }
-            
             details.push({
                 questionNumber: i + 1,
                 question: question,
                 userAnswer: userAnswer,
                 correctAnswers: question.correctAnswers,
-                isCorrect: isCorrect,
-                userAnswerText: userAnswerText,
-                correctAnswerTexts: question.correctAnswers.map(ans => question.options[ans])
+                isCorrect: isCorrect
             });
         }
         

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Questions aNd Answers (QNA) - Trivia/Quiz Interactivo</title>
     <meta name="description" content="Aplicación de quiz interactivo basada en archivos Markdown">
-    <link rel="stylesheet" href="css/styles.css?v=20261014-4">
+    <link rel="stylesheet" href="css/styles.css?v=20261016">
 </head>
 <body>
     <div class="container">
@@ -14,9 +14,10 @@
             <div class="header-content">
                 <div class="header-text">
                     <h1>Questions aNd Answers (QNA)</h1>
-                    <p>Trivia/Quiz interactivo basado en contenido Markdown</p>
+                    <p data-i18n="appSubtitle">Trivia/Quiz interactivo basado en contenido Markdown</p>
                 </div>
                 <div class="theme-toggle">
+                    <button id="lang-btn" class="theme-btn" aria-label="Language / Idioma">🇺🇸</button>
                     <button onclick="toggleTheme()" class="theme-btn" id="theme-btn">🌙</button>
                 </div>
             </div>
@@ -25,17 +26,17 @@
         <!-- Pantalla de Configuración -->
         <main id="config-screen" class="screen active">
             <section class="config-section">
-                <h2>Configuración del Quiz</h2>
-                <p>Personaliza tu experiencia de quiz antes de comenzar.</p>
+                <h2 data-i18n="configTitle">Configuración del Quiz</h2>
+                <p data-i18n="configDesc">Personaliza tu experiencia de quiz antes de comenzar.</p>
                 
                 <div class="config-section">
-                    <label for="quiz-select">Catálogo:</label>
+                    <label for="quiz-select" data-i18n="catalogLabel">Catálogo:</label>
                     <select id="quiz-select" aria-describedby="quiz-select-help"></select>
-                    <small id="quiz-select-help">Elige del catálogo (quizzes.json)</small>
+                    <small id="quiz-select-help" data-i18n="catalogHelp">Elige del catálogo (quizzes.json)</small>
                 </div>
 
                 <div class="config-section">
-                    <label for="quiz-filename">Archivo de preguntas:</label>
+                    <label for="quiz-filename" data-i18n="fileLabel">Archivo de preguntas:</label>
                     <input 
                         type="text" 
                         id="quiz-filename" 
@@ -43,11 +44,11 @@
                         placeholder="Quiz.md"
                         aria-describedby="quiz-filename-help"
                     >
-                    <small id="quiz-filename-help">Ruta local, URL o URL S3 (también vía ?quiz=) del Markdown con las preguntas</small>
+                    <small id="quiz-filename-help" data-i18n="fileHelp">Ruta local, URL o URL S3 (también vía ?quiz=) del Markdown con las preguntas</small>
                 </div>
 
                 <div class="config-section">
-                    <label for="question-count">Número de preguntas:</label>
+                    <label for="question-count" data-i18n="countLabel">Número de preguntas:</label>
                     <input 
                         type="number" 
                         id="question-count" 
@@ -57,11 +58,11 @@
                         aria-describedby="question-count-help"
                     >
                     <small id="question-count-help">Selecciona entre 1 y el total de preguntas disponibles</small>
-                    <small id="config-save-status" class="config-save-status hidden">Configuración guardada ✓</small>
+                    <small id="config-save-status" class="config-save-status hidden" data-i18n="savedMsg">Configuración guardada ✓</small>
                 </div>
 
                 <div class="config-section">
-                    <label for="file-status">Estado del archivo:</label>
+                    <label for="file-status" data-i18n="fileStatusLabel">Estado del archivo:</label>
                     <div id="file-status" class="loading">
                         <div class="loading-spinner"></div>
                         <p>Cargando archivo Quiz.md...</p>
@@ -69,10 +70,10 @@
                 </div>
 
                 <div class="text-center">
-                    <button id="load-questions-btn" class="btn btn-secondary">
+                    <button id="load-questions-btn" class="btn btn-secondary" data-i18n="loadBtn">
                         Cargar Preguntas
                     </button>
-                    <button id="start-quiz-btn" class="btn" disabled>
+                    <button id="start-quiz-btn" class="btn" disabled data-i18n="startBtn">
                         Iniciar Quiz
                     </button>
                     <button id="view-skipped-btn" type="button" class="btn btn-secondary" style="display:none;">
@@ -85,10 +86,10 @@
         <!-- Pantalla de Descartadas -->
         <main id="skipped-screen" class="screen">
             <section class="results-details">
-                <h2>Preguntas descartadas</h2>
-                <p>Detalle de preguntas omitidas por errores de formato o validación.</p>
+                <h2 data-i18n="skippedTitle">Preguntas descartadas</h2>
+                <p data-i18n="skippedDesc">Detalle de preguntas omitidas por errores de formato o validación.</p>
                 <div class="text-center">
-                    <button id="back-skipped-top-btn" type="button" class="btn btn-secondary" style="display:none;">
+                    <button id="back-skipped-top-btn" type="button" class="btn btn-secondary" style="display:none;" data-i18n="backBtn">
                         Volver
                     </button>
                 </div>
@@ -98,7 +99,7 @@
             </section>
 
             <div class="text-center">
-                <button id="back-skipped-btn" type="button" class="btn btn-secondary">
+                <button id="back-skipped-btn" type="button" class="btn btn-secondary" data-i18n="backBtn">
                     Volver
                 </button>
             </div>
@@ -148,7 +149,7 @@
 
                 <!-- Controles de navegación -->
                 <div class="text-center">
-                    <button id="next-question-btn" class="btn" disabled>
+                    <button id="next-question-btn" class="btn" disabled data-i18n="nextBtn">
                         Siguiente Pregunta
                     </button>
                 </div>
@@ -158,13 +159,13 @@
         <!-- Pantalla de Resultados -->
         <main id="results-screen" class="screen">
             <section class="results-summary">
-                <h2>¡Quiz Completado!</h2>
+                <h2 data-i18n="resultsTitle">¡Quiz Completado!</h2>
                 <div id="score-display" class="score-display">85%</div>
                 <p id="score-text" class="score-text">8 de 10 respuestas correctas</p>
             </section>
 
             <section class="results-details">
-                <h3>Detalle de Respuestas</h3>
+                <h3 data-i18n="resultsDetails">Detalle de Respuestas</h3>
                 <div id="results-list">
                     <!-- Los resultados se generarán dinámicamente -->
                 </div>
@@ -174,10 +175,10 @@
                 <button id="review-failed-btn" type="button" class="btn">
                     Repasar
                 </button>
-                <button id="new-quiz-btn" class="btn btn-secondary">
+                <button id="new-quiz-btn" class="btn btn-secondary" data-i18n="newQuizBtn">
                     Nuevo Quiz
                 </button>
-                <button id="back-config-btn" class="btn btn-secondary">
+                <button id="back-config-btn" class="btn btn-secondary" data-i18n="configBtn">
                     Configuración
                 </button>
             </div>
@@ -214,11 +215,12 @@
     </style>
 
     <!-- Scripts - Load components first, then main app (?v= forces fresh JS after deploys) -->
-    <script src="js/theme-toggle.js?v=20261014-2"></script>
-    <script src="js/file-handler.js?v=20261014-6"></script>
-    <script src="js/markdown-parser.js?v=20261014-6"></script>
-    <script src="js/quiz-engine.js?v=20261014-7"></script>
-    <script src="js/ui-controller.js?v=20261014-7"></script>
-    <script src="js/app.js?v=20261014-4"></script>
+    <script src="js/theme-toggle.js?v=20261016"></script>
+    <script src="js/i18n.js?v=20261016"></script>
+    <script src="js/file-handler.js?v=20261016"></script>
+    <script src="js/markdown-parser.js?v=20261016"></script>
+    <script src="js/quiz-engine.js?v=20261016"></script>
+    <script src="js/ui-controller.js?v=20261016"></script>
+    <script src="js/app.js?v=20261016"></script>
 </body>
 </html>

@@ -11,9 +11,6 @@ class MarkdownParser {
         
         // Regex to extract correct answers from <as-button> elements
         this.correctAnswerRegex = /<as-button[^>]*message="([^"]+)"[^>]*>/;
-        
-        // Extra regex to handle the inquire attribute (multiple answers)
-        this.inquireAnswerRegex = /<as-button[^>]*inquire="([^"]+)"[^>]*>/;
 
         // Fallback: "<!-- R: B -->" (and legacy "> R: B") only when there is no <as-button>
         this.fallbackAnswerRegex = /<!--\s*R\s*:\s*([A-Za-z,\s]+?)\s*-->/;
@@ -36,7 +33,7 @@ class MarkdownParser {
             minOptions: 2,
             maxOptions: 8,
             requiredOptionLetters: ['A', 'B'], // Minimum required options
-            maxOptionTextLength: 500
+            maxOptionTextLength: 800
         };
     }
 
@@ -206,18 +203,6 @@ class MarkdownParser {
             const messageValue = messageMatch[1];
             // Handle multiple answers in the message attribute (e.g., "AB", "AC", "BE")
             for (const char of messageValue) {
-                if (/[A-Z]/.test(char)) {
-                    correctAnswers.push(char);
-                }
-            }
-        }
-        
-        // Extract additional answers from the inquire attribute
-        const inquireMatch = this.inquireAnswerRegex.exec(questionBlock);
-        if (inquireMatch) {
-            const inquireValue = inquireMatch[1];
-            // Handle multiple answers in the inquire attribute
-            for (const char of inquireValue) {
                 if (/[A-Z]/.test(char) && !correctAnswers.includes(char)) {
                     correctAnswers.push(char);
                 }

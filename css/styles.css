@@ -432,15 +432,14 @@ body.dark-theme .theme-btn {
 }
 
 .score-display {
-    font-size: 3rem;
+    display: inline-block;
+    font-size: 1.5rem;
     font-weight: 700;
-    color: #27ae60;
+    color: #fff;
+    padding: 0.25rem 1.25rem;
+    border-radius: 999px;
     margin-bottom: 0.5rem;
     animation: scoreCountUp 1.5s ease forwards;
-    background: linear-gradient(135deg, #27ae60, #2ecc71);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
 }
 
 .score-text {
@@ -1305,4 +1304,129 @@ body.dark-theme .config-section select:focus {
     .result-item::after {
         display: none;
     }
+}
+
+/* ============================================================
+   OnMind-CUI design layer (buttons, box, modal, inputs)
+   QNA quiz components (options, results, progress, score,
+   animations) are preserved above and untouched.
+   Source: ui/cui/src (as-button, as-modal, as-input)
+   ============================================================ */
+:root {
+    --cui-primary: #3b82f6;
+    --cui-primary-hover: #2563eb;
+    --cui-primary-active: #1d4ed8;
+    --cui-secondary: #e5e7eb;
+    --cui-secondary-hover: #d1d5db;
+    --cui-secondary-active: #9ca3af;
+    --cui-ink: #1f2937;
+    --cui-muted: #6b7280;
+    --cui-label: #374151;
+    --cui-input-bg: #e8eaed;
+    --cui-input-focus: #1676f3;
+    --cui-surface-dark: #1f2937;
+    --cui-text-dark: #f3f4f6;
+    --cui-font: -apple-system, BlinkMacSystemFont, "Roboto", "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+body {
+    font-family: var(--cui-font);
+}
+
+/* Buttons (as-button) */
+.btn {
+    background: var(--cui-primary);
+    border-radius: 4px;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    font-family: var(--cui-font);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    transform: none;
+}
+
+.btn::before {
+    display: none;
+}
+
+.btn:hover {
+    background: var(--cui-primary-hover);
+    transform: none;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+    background: var(--cui-primary-active);
+    transform: none;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.btn:disabled {
+    background: var(--cui-primary);
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.btn-secondary {
+    background: var(--cui-secondary);
+    color: var(--cui-ink);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.btn-secondary:hover {
+    background: var(--cui-secondary-hover);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.btn-secondary:active {
+    background: var(--cui-secondary-active);
+}
+
+/* Box (as-modal content) */
+.screen {
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+/* Error toast with modal feel */
+.error-notification {
+    border-radius: 8px !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2) !important;
+    font-family: var(--cui-font);
+}
+
+/* Inputs, dropdown (as-input) */
+.config-section label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--cui-label);
+}
+
+.config-section input,
+.config-section select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    font-size: 0.9375rem;
+    font-family: inherit;
+    background: var(--cui-input-bg);
+    color: #1a1a1a;
+}
+
+.config-section input:focus,
+.config-section select:focus {
+    border-color: var(--cui-input-focus);
+}
+
+.config-section input::placeholder {
+    color: #737373;
+}
+
+body.dark-theme .config-section label {
+    color: var(--cui-text-dark);
+}
+
+body.dark-theme .screen {
+    background: var(--cui-surface-dark);
 }

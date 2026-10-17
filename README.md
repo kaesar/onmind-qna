@@ -1,4 +1,4 @@
-# Questions aNd Answers (OnMind-QNA)
+# OnMind-QNA –> Questions aNd Answers
 
 > Simple WebApp that uses Markdown files as content database for quiz or trivia.
 
@@ -32,7 +32,7 @@ D. Fourth option
 - **Options** start with a capital letter followed by a dot (`A.` … `H.`), one per line, at least two per question. Bold is optional.
 - **Answers** can be declared in 3 modalities (first match wins, evaluated in this order):
 
-  1. `<as-button message="B">` — primary. Supports multiple answers (`message="AB"`) and extra doubt flags (`inquire="C"`). This tag is kept for compatibility with the [**OnMind-CUI**](https://github.com/kaesar/onmind-cui) library and the [**OnMind-PUB**](https://github.com/kaesar/onmind-pub) blog manager: the same file can be published as an article, and that article can also feed the quiz in **OnMind-QNA**.
+  1. `<as-button message="B">` — primary. Supports multiple answers (`message="AB"`). This tag is kept for compatibility with the [**OnMind-CUI**](https://github.com/kaesar/onmind-cui) library and the [**OnMind-PUB**](https://github.com/kaesar/onmind-pub) blog manager: the same file can be published as an article, and that article can also feed the quiz in **OnMind-QNA**.
   2. `<!-- R: B -->` — single-line HTML comment fallback. Invisible when the Markdown is rendered.
   3. `> R: B` — legacy blockquote fallback.
 
@@ -53,14 +53,17 @@ D. Fourth option
 │   ├── markdown-parser.js  # Markdown parser
 │   ├── quiz-engine.js      # Quiz engine
 │   ├── ui-controller.js    # UI controller
+│   ├── i18n.js             # ES/EN UI labels
 │   └── file-handler.js     # File handler
 ├── Quiz.md                 # Data file
 └── README.md               # This file
 ```
 
-## How to Start the Service for OnMind-QNA
+## How to Start the Service for OnMind-QNA (local)
 
-To avoid **CORS** issues when loading files, avoid opening the `index.html` file directly. It's recommended to use a local web server. Here are some alternatives to expose the web page as a local service...
+To avoid **CORS** issues when loading files, avoid opening the `index.html` file directly. It's recommended to use a local web server. Here expose some alternatives to launch web page as a local service.
+
+> You can use **OnMind-QNA** just by open a browser with the address `http://localhost:8081` considering the next...
 
 ### Python (if you have Python installed)
 
@@ -94,21 +97,28 @@ bunx http-server -p 8000
 php -S localhost:8000
 ```
 
-### Docker (Recommended for production)
+## How to deploy OnMind-QNA (production)
+
+Let's see some alternatives to deploy **OnMind-QNA**...
+
+### Docker container
 
 The application is containerized using Docker for easy deployment. The container uses Nginx to serve the static files with optimized performance and security settings. To buid consider next sentences:
 
 ```bash
+git clone --depth 1 --branch release/v1 https://github.com/kaesar/onmind-qna qna
+cd qna
 docker build -t onmind-qna:latest .
-docker run -d -p 8080:80 --name onmind-qna onmind-qna:latest
+docker run -d -p 8081:80 --name onmind-qna onmind-qna:latest
 ```
 
-> For **Linux**, it's possible check file priviledge with command: `chmod 775 Quiz.md`
+> For **Linux**, it's possible check file priviledge with command: `chmod 775 Quiz.md`  
+> To reinstall first executes `docker stop onmind-qna && docker rm onmind-qna`
 
 To use a custom `Quiz.md` file without rebuilding the container, mount it as a volume:
 
 ```bash
-docker run -d -p 8080:80 \
+docker run -d -p 8081:80 \
   -v $(pwd)/Quiz.md:/usr/share/nginx/html/Quiz.md:ro \
   --name onmind-qna \
   onmind-qna:latest
@@ -117,7 +127,7 @@ docker run -d -p 8080:80 \
 Or using a different quiz file:
 
 ```bash
-docker run -d -p 8080:80 \
+docker run -d -p 8081:80 \
   -v $(pwd)/Trivia.md:/usr/share/nginx/html/Quiz.md:ro \
   --name onmind-qna \
   onmind-qna:latest
@@ -125,16 +135,49 @@ docker run -d -p 8080:80 \
 
 > **Note:** The container expects the file to be named `Quiz.md` at the path `/usr/share/nginx/html/Quiz.md`. The volume mount replaces the default file with your custom file. The `:ro` flag makes it read-only for security.
 
-### Open OnMind-QNA web application
+### Cloudflare Pages (no build, no wrangler)
 
-Just open a browser and use the address: `http://localhost:8080`
+The app is fully static, so it deploys on **Cloudflare Pages** from the dashboard with no build step and no `wrangler` needed, just use the [repo](https://github.com/kaesar/onmind-qna). Follow the next settings from **Cloudflare**:
 
+1. Cloudflare dashboard –> Workers & Pages –> Create → Pages –> Connect to Git –> select the [repo](https://github.com/kaesar/onmind-qna).
+2. Project name: `onmind-qna`. Production branch: `release/v1`.
+3. Framework preset: None. Build command: (empty). Build output directory: `./` (repo root, where `index.html` lives).
+4. Save and Deploy. The quiz files (`Quiz.md`, `quizzes.json`, `?quiz=` links) work unchanged as same-origin relative paths.
+
+<!--
+### Amazon S3 + CloudFront (CLI)
+
+To deploy with **Amazon S3**, you can consider to use the **AWS CLI** with sentences like this:
+
+```bash
+# Bucket (replace region/name as needed)
+aws s3 mb s3://onmind-qna --region us-east-1
+
+# Upload the static site (skip some files)
+aws s3 sync ./ s3://onmind-qna --delete \
+  --exclude ".git/*" \
+  --exclude "Dockerfile" \
+  --exclude "docker-compose.yml" \
+  --exclude "nginx*.conf" \
+  --exclude "scripts/*" \
+  --exclude "test-data/*" \
+  --exclude "test-*.html" \
+  --exclude "integration-test.html"
+
+# Invalidate CloudFront after each deploy (replace DIST_ID)
+aws cloudfront create-invalidation --distribution-id DIST_ID --paths "/*"
+```
+
+> Serve through CloudFront with Origin Access Control (OAC) and keep the bucket private; S3 static-website hosting alone is HTTP-only. `Quiz.md`, `quizzes.json` and `?quiz=` links work unchanged as same-origin relative paths.
+-->
 ## Application Usage
 
 1. **Configure**: 
    - Pick a quiz from the catalog dropdown (`quizzes.json`) or type a local path / URL (S3 included)
    - Each catalog entry may suggest a default question count via `"questions"` (applied to the count input, clamped to available)
    - Deep link with `?quiz=` (e.g. `index.html?quiz=Trivia-SAA.md` or `?quiz=https://bucket.s3.amazonaws.com/Quiz.md`)
+   - Validate a single question by its code with `?question=` (e.g. `index.html?question=9` or `?question=009`); the count is forced to 1 and the quiz starts directly
+   - Switch UI language with the EN/ES button (questions always stay in the source file language)
    - Select the desired number of questions (1-50)
 2. **Start**: Click "Start Quiz"
 3. **Answer**: Select an option for each question
@@ -161,6 +204,7 @@ The main **javascript** files are the following:
 - `markdown-parser.js` - Question extraction and validation
 - `quiz-engine.js` - Quiz logic and scoring
 - `ui-controller.js` - Interface management and navigation
+- `i18n.js` - Spanish/English UI labels dictionary (questions and options always come from Markdown, never translated)
 - `file-handler.js` - File loading and validation
 - `performance-monitor.js` - Performance monitoring
 - `responsive-tester.js` - Responsiveness testing

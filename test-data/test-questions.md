@@ -35,7 +35,7 @@ D. **Mixed** formatting option
 
 ## Pregunta 004
 
-Question with inquire attribute for additional answers.
+Question with an extra attribute in its answer button.
 
 A. Option A
 B. Option B
